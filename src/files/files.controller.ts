@@ -2,7 +2,7 @@ import {
   Controller,
   FileTypeValidator,
   Get,
-  MaxFileSizeValidator,
+  MaxFileSizeValidator, NotFoundException,
   Param,
   ParseFilePipe,
   Post,
@@ -14,10 +14,12 @@ import {
 import { createReadStream } from "fs";
 import { join } from "path";
 import { FileInterceptor } from "@nestjs/platform-express";
+import { FilesService } from "./files.service";
+import { Response } from 'express';
 
-@Controller("filemanager")
-export class FilemanagerController {
-  constructor() {
+@Controller("files")
+export class FilesController {
+  constructor(private readonly filesService: FilesService) {
   }
 
 
@@ -31,15 +33,18 @@ export class FilemanagerController {
       ]
     })
   ) file: Express.Multer.File) {
-    return file;
+    return this.filesService.save(file);
   }
 
 
-  @Get("/file/:filename")
-  getFile(@Param("filename") filename: string, @Res() res: Response): StreamableFile {
-    const filePath = join(process.cwd(), "uploads" , filename);
-    const file = createReadStream(join(filePath));
-    return new StreamableFile(file);
+  @Get("/:fileName")
+  getFile(@Param("fileName") fileName: string, @Res() res: Response) {
+    try {
+      const filePath = join(process.cwd(), "uploads", fileName);
+      res.sendFile(filePath);
+    }catch (e) {
+      throw new NotFoundException('Resource not found');
+    }
   }
 
 
