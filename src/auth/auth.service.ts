@@ -47,7 +47,9 @@ export class AuthService {
 
     await this.redisClient.send_command("HSET", [key, ...entries]);
     await this.redisClient.send_command("EXPIRE", [key, 120]); // 120 seconds = 2 minutes
-
+    return {
+      success: true
+    };
   }
 
   async verify(verifyDto: VerifyDto) {
@@ -73,6 +75,7 @@ export class AuthService {
     };
     const token = await this.aesService.encrypt(JSON.stringify(data));
     return {
+      success: true,
       channel: userFields.channel,
       token: token
     };
