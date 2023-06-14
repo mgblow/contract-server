@@ -7,8 +7,8 @@ export class Label extends Document {
   @Prop({ type: String })
   userId: string;
 
-  @Prop({ type: String, ref: "Contract" })
-  contractId: string;
+  @Prop({ type: String, ref: "Box" })
+  boxId: string;
 }
 
 export const LabelSchema = SchemaFactory.createForClass(Label);

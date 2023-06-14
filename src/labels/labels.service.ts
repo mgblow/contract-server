@@ -13,21 +13,24 @@ import { SearchLabelsPayload } from "./dto/search-labels.payload";
 @Injectable()
 export class LabelsService {
   constructor(
-    @InjectModel(Label.name) private createdLabel: Model<Label>,
+    @InjectModel(Label.name) private labelModel: Model<Label>,
     private readonly responseService: ResponseService
   ) {
   }
 
   async create(createlabelPayload: CreatelabelPayload): Promise<void> {
-    const userLabelsCount = await this.createdLabel.countDocuments({ userId: createlabelPayload.token.userFields.id });
-    if (userLabelsCount >= 2) {
+    const userLabelsCount = await this.labelModel.countDocuments({ 
+      userId: createlabelPayload.token.userFields.id,
+      boxId: createlabelPayload.boxId 
+    });
+    if (userLabelsCount == 1) {
       await this.responseService.sendError(createlabelPayload.token.userFields.channel, {
-        "business.count": "You cannot create more than 3 businesses."
+        "label.exists": "You have labeled this item."
       });
       return;
     }
     createlabelPayload.userId = createlabelPayload.token.userFields.id;
-    const labelModel = new this.createdLabel(createlabelPayload);
+    const labelModel = new this.labelModel(createlabelPayload);
     const label = await labelModel.save();
     await this.responseService.sendSuccess(createlabelPayload.token.userFields.channel, label);
   }
@@ -36,13 +39,13 @@ export class LabelsService {
   async searchByQuery(searchLabelsPayload: SearchLabelsPayload): Promise<void> {
     const regex = new RegExp(searchLabelsPayload.query, "i");
     const [labels, total] = await Promise.all([
-      this.createdLabel.find({
+      this.labelModel.find({
         $or: [
           { name: regex },
           { about: regex }
         ]
       }).limit(searchLabelsPayload.limit).skip(searchLabelsPayload.limit * (searchLabelsPayload.page - 1)).exec(),
-      this.createdLabel.countDocuments({
+      this.labelModel.countDocuments({
         $or: [
           { name: regex },
           { about: regex }
@@ -54,17 +57,17 @@ export class LabelsService {
 
 
   async fetchAll(fetchLabelsPayload: FetchLabelsPayload): Promise<void> {
-    const [categories, total] = await Promise.all([
-      this.createdLabel.find({
+    const [labels, total] = await Promise.all([
+      this.labelModel.find({
         userId: fetchLabelsPayload.token.userFields.id
       }).limit(fetchLabelsPayload.limit).skip(fetchLabelsPayload.limit * (fetchLabelsPayload.page - 1)).exec(),
-      this.createdLabel.countDocuments()
+      this.labelModel.countDocuments()
     ]);
-    await this.responseService.sendSuccess(fetchLabelsPayload.token.userFields.channel, { categories, total });
+    await this.responseService.sendSuccess(fetchLabelsPayload.token.userFields.channel, { categories: labels, total });
   }
 
   async delete(deleteLabelPayload: DeleteLabelPayload): Promise<void> {
-    const deleted = await this.createdLabel.deleteOne({
+    const deleted = await this.labelModel.deleteOne({
       _id: deleteLabelPayload._id,
       userId: deleteLabelPayload.token.userFields.id
     }).exec();
@@ -72,7 +75,7 @@ export class LabelsService {
   }
 
   async findById(findLabelPayload: FindLabelPayload): Promise<void> {
-    const label = await this.createdLabel.find({
+    const label = await this.labelModel.find({
       _id: findLabelPayload._id,
       userId: findLabelPayload.token.userFields.id
     }).exec();

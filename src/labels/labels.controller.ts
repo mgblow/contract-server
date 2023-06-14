@@ -13,28 +13,28 @@ export class LabelsController {
   }
 
   @MessagePattern("createLabel")
-  createLabel(@Payload() createLabelDto: CreatelabelPayload) {
-    return this.labelsService.create(createLabelDto);
+  createLabel(@Payload() createLabelPayloadDto: CreatelabelPayload) {
+    return this.labelsService.create(createLabelPayloadDto);
   }
 
   @MessagePattern("deleteLabel")
-  deleteLabel(@Payload() deleteLabelDto: DeleteLabelPayload) {
-    return this.labelsService.delete(deleteLabelDto);
+  deleteLabel(@Payload() deleteLabelPayloadDto: DeleteLabelPayload) {
+    return this.labelsService.delete(deleteLabelPayloadDto);
   }
 
   @MessagePattern("findLabel")
-  findLabel(@Payload() findLabelDto: FindLabelPayload) {
-    return this.labelsService.findById(findLabelDto);
+  findLabel(@Payload() findLabelPayloadDto: FindLabelPayload) {
+    return this.labelsService.findById(findLabelPayloadDto);
   }
 
   @MessagePattern("searchLabeles")
-  searchLabeles(@Payload() searchLabelesDto: SearchLabelsPayload) {
-    return this.labelsService.searchByQuery(searchLabelesDto);
+  searchLabeles(@Payload() searchLabelesPayloadDto: SearchLabelsPayload) {
+    return this.labelsService.searchByQuery(searchLabelesPayloadDto);
   }
 
   @MessagePattern("fetchLabeles")
-  fetchLabeles(@Payload() fetchLabelesDto: FetchLabelsPayload) {
-    return this.labelsService.fetchAll(fetchLabelesDto);
+  fetchLabeles(@Payload() fetchLabelesPayloadDto: FetchLabelsPayload) {
+    return this.labelsService.fetchAll(fetchLabelesPayloadDto);
   }
 
 }
