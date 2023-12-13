@@ -7,7 +7,8 @@ import { UpdateProxyDto } from './dto/update-proxy.dto';
 export class ProxyController {
   constructor(private readonly proxyService: ProxyService) {}
 
-  
+
+  // post mappings
   @Post("")
   post(@Headers('token') token: string, @Body() publishProxyDto: PublishProxyDto) {
     return this.proxyService.publish(publishProxyDto, token);
