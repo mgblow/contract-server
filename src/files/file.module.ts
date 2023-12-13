@@ -5,6 +5,7 @@ import { DatabaseConnectionModule } from "../injection/DatabaseConnection";
 import { MongooseModule } from "@nestjs/mongoose";
 import { File, FileSchema } from "./entities/file.entity";
 import { FilesService } from "./files.service";
+import { AesService } from "../injection/aes.service";
 
 @Module({
   imports: [
@@ -15,7 +16,7 @@ import { FilesService } from "./files.service";
     })
   ],
   controllers: [FilesController],
-  providers: [FilesService]
+  providers: [FilesService, AesService]
 })
 export class FileModule {
 }
