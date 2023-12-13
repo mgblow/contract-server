@@ -14,10 +14,10 @@ export class ProxyService {
     this.TOKEN_SECRET = process.env["TOKEN_SECRET"];
   }
 
-  async publish(publishProxyDto: PublishProxyDto): Promise<any> {
+  async publish(publishProxyDto: PublishProxyDto, token: string): Promise<any> {
     // validate token
     try {
-      const token = await this.aesService.decrypt(publishProxyDto.data.token);
+      token = await this.aesService.decrypt(token);
       publishProxyDto.data.token = JSON.parse(token);
       const secret = await this.aesService.decrypt(publishProxyDto.data.token.secret);
       if (this.TOKEN_SECRET != secret) {
@@ -27,14 +27,9 @@ export class ProxyService {
       // if (publishProxyDto.token.expiresAt < new Date().getTime()) {
       //   throw new NotAcceptableException(`token has expired on this request!`);
       // }
-      const result = await this.requestService.send(publishProxyDto.topic, publishProxyDto.data);
-      return result;
+      return await this.requestService.send(publishProxyDto.topic, publishProxyDto.data);
     } catch (e) {
       throw new NotAcceptableException(`token validation fails on this request!`);
     }
-  }
-
-  findAll() {
-    return `This action returns all proxy`;
   }
 }

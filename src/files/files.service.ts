@@ -17,16 +17,11 @@ export class FilesService {
   }
 
 
-  async save(file: Express.Multer.File) {
-    // const token = await this.aesService.decrypt(publishProxyDto.data.token);
-    // publishProxyDto.data.token = JSON.parse(token);
-    // const secret = await this.aesService.decrypt(publishProxyDto.data.token.secret);
-    // if (this.TOKEN_SECRET != secret) {
-    //   return false;
-    // }
+  async save(file: Express.Multer.File, token: string) {
     const resizedImageBuffer = await sharp(file.path)
       .resize(800, 600)
       .toBuffer();
+    // initiate this file with its valid token
     return file;
   }
 

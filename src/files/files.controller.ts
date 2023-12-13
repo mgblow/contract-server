@@ -6,6 +6,7 @@ import {
   Param,
   ParseFilePipe,
   Post,
+  Headers,
   Res,
   StreamableFile,
   UploadedFile,
@@ -32,8 +33,8 @@ export class FilesController {
         new MaxFileSizeValidator({ maxSize: 1024 * 1024 * 4 })
       ]
     })
-  ) file: Express.Multer.File) {
-    return this.filesService.save(file);
+  ) file: Express.Multer.File, @Headers('token') token: string,) {
+    return this.filesService.save(file, token);
   }
 
 

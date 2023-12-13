@@ -33,10 +33,10 @@ export class MessagesController {
     return this.messagesService.findById(findMessageDto);
   }
 
-  @MessagePattern("searchMessages")
-  searchMessages(@Payload() searchMessagesDto: SearchMessagesPayload) {
-    return this.messagesService.searchByQuery(searchMessagesDto);
-  }
+  // @MessagePattern("searchMessages")
+  // searchMessages(@Payload() searchMessagesDto: SearchMessagesPayload) {
+  //   return this.messagesService.searchByQuery(searchMessagesDto);
+  // }
 
   @MessagePattern("fetchMessages")
   fetchMessages(@Payload() fetchMessagesDto: FetchMessagesPayload) {
