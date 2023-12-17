@@ -12,7 +12,6 @@ export class ProxyController {
   @Post("")
   post(@Headers('token') token: string, @Body() publishProxyDto: PublishProxyDto) {
     return this.proxyService.publish(publishProxyDto, token);
-    console.log("hiiiiiiiiiiiiiiiiiiiiii");
   }
 
   @Get("")
