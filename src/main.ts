@@ -21,7 +21,9 @@ async function bootstrap() {
     {
       transport: Transport.MQTT,
       options: {
-        url: process.env["MQTT_URL"]
+        url: process.env["MQTT_URL"],
+        clientId: process.env["MQTT_USERNAME"],
+        password: process.env["MQTT_PASSWORD"],
       }
     }
   );

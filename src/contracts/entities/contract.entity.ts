@@ -33,6 +33,17 @@ export class Contract extends Document {
 
   @Prop({ type: String })
   status: string;
+
+  @Prop({ type: String })
+  tokenId?: string;
+
+  @Prop({ type: Object })
+  location?: {
+    world: string;
+    x: number;
+    y: number;
+    z: number;
+  };
 }
 
 export const ContractSchema = SchemaFactory.createForClass(Contract);
