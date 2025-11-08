@@ -50,7 +50,7 @@ export class ContractsService {
     }
     existingContract.set(updateContractPayload);
     const updatedOption = await existingContract.save();
-    await this.responseService.sendSuccess(updateContractPayload.token.userFields.channel, updatedOption);
+    await this.responseService.sendSuccess(updateContractPayload.token.userFields.channel + "/updateContract", updatedOption);
   }
 
 
@@ -81,7 +81,7 @@ export class ContractsService {
       this.contractModel.find().limit(fetchContractsPayload.limit).skip(fetchContractsPayload.limit * (fetchContractsPayload.page - 1)).exec(),
       this.contractModel.countDocuments()
     ]);
-    await this.responseService.sendSuccess(fetchContractsPayload.token.userFields.channel, {
+    await this.responseService.sendSuccess(fetchContractsPayload.token.userFields.channel + "/fetchContracts", {
       categories: contracts,
       total
     });
@@ -89,12 +89,12 @@ export class ContractsService {
 
   async delete(deleteContractPayload: DeleteContractPayload): Promise<void> {
     const deleted = await this.contractModel.deleteOne({ _id: deleteContractPayload._id }).exec();
-    await this.responseService.sendSuccess(deleteContractPayload.token.userFields.channel, deleted);
+    await this.responseService.sendSuccess(deleteContractPayload.token.userFields.channel + "/deleteContract", deleted);
   }
 
   async findById(findContractPayload: FindContractPayload): Promise<void> {
     const update = await this.contractModel.findById(findContractPayload._id).exec();
-    await this.responseService.sendSuccess(findContractPayload.token.userFields.channel, update);
+    await this.responseService.sendSuccess(findContractPayload.token.userFields.channel + "/findContract", update);
   }
 
 }
