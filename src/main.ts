@@ -21,12 +21,21 @@ async function bootstrap() {
     {
       transport: Transport.MQTT,
       options: {
-        url: process.env["MQTT_URL"]
+        url: process.env["MQTT_URL"],
+        clientId:generateRandomClientId("lynku"), 
+        username: process.env["MQTT_USERNAME"],
+        password: process.env["MQTT_PASSWORD"]
       }
     }
   );
   // add a global listener to intercept and validate tokens
   await microserviceApp.listen();
+}
+
+function generateRandomClientId(prefix: string = "lynku") {
+  // Generate 6 random hex characters
+  const randomHex = Math.random().toString(16).slice(2, 8);
+  return `${prefix}-${randomHex}`;
 }
 
 bootstrap();

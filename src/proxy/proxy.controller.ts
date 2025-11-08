@@ -3,7 +3,7 @@ import { ProxyService } from './proxy.service';
 import { PublishProxyDto } from './dto/publish-proxy.dto';
 import { UpdateProxyDto } from './dto/update-proxy.dto';
 
-@Controller('/api/v1/*')
+@Controller('/api/v1')
 export class ProxyController {
   constructor(private readonly proxyService: ProxyService) {}
 
@@ -12,7 +12,6 @@ export class ProxyController {
   @Post("")
   post(@Headers('token') token: string, @Body() publishProxyDto: PublishProxyDto) {
     return this.proxyService.publish(publishProxyDto, token);
-    console.log("hiiiiiiiiiiiiiiiiiiiiii");
   }
 
   @Get("")
