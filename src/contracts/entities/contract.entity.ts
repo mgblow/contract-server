@@ -17,9 +17,6 @@ export class Contract extends Document {
   media: string[];
 
   @Prop({ required: true })
-  name: string;
-
-  @Prop({ required: true })
   text: string;
 
   @Prop({ type: String })
@@ -33,6 +30,41 @@ export class Contract extends Document {
 
   @Prop({ type: String })
   status: string;
+
+  // Location fields
+  @Prop({ type: String })
+  address: string;
+
+  @Prop({ type: String })
+  city: string;
+
+  @Prop({ type: String })
+  state: string;
+
+  @Prop({ type: String })
+  country: string;
+
+  @Prop({ type: String })
+  zipCode: string;
+
+  @Prop({
+    type: {
+      type: String,
+      enum: ['Point'],
+      default: 'Point'
+    },
+    coordinates: {
+      type: [Number], // [longitude, latitude]
+      index: '2dsphere'
+    }
+  })
+  location: {
+    type: string;
+    coordinates: number[];
+  };
 }
 
 export const ContractSchema = SchemaFactory.createForClass(Contract);
+
+// Create 2dsphere index for geospatial queries
+ContractSchema.index({ location: '2dsphere' });

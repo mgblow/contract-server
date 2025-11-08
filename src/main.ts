@@ -13,7 +13,7 @@ async function bootstrap() {
   httpApp.enableCors({
     origin: '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    allowedHeaders: ['Content-Type'],
+    allowedHeaders: ['Content-Type', 'Token'],
   });
   await httpApp.listen(3000);
   const microserviceApp = await NestFactory.createMicroservice<MicroserviceOptions>(

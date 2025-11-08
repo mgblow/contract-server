@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import { CreateContractPayload } from "./dto/create-contract.payload";
@@ -59,20 +59,19 @@ export class ContractsService {
     const [contracts, total] = await Promise.all([
       this.contractModel.find({
         $or: [
-          { name: regex },
-          { about: regex }
+          { text: regex }
         ]
       }).limit(searchContractsPayload.limit).skip(searchContractsPayload.limit * (searchContractsPayload.page - 1)).exec(),
       this.contractModel.countDocuments({
         $or: [
-          { name: regex },
-          { about: regex }
+          { text: regex }
         ]
       })
     ]);
-    await this.responseService.sendSuccess(searchContractsPayload.token.userFields.channel, {
-      businesses: contracts,
-      total
+    Logger.log(`Found ${total} contracts matching query "${searchContractsPayload.query}"`);
+    await this.responseService.sendSuccess(searchContractsPayload.token.userFields.channel + "/searchContracts", {
+      publishes: contracts,
+      total: total
     });
   }
 

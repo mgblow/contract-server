@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import * as mqtt from "mqtt";
 
 @Injectable()
@@ -41,9 +41,11 @@ export class RequestService {
   }
 
   public async send(channel: string, data: any): Promise<any> {
+    Logger.log(`Sending request to channel: ${channel} with data: ${JSON.stringify(data)}`);
     const responsePromise = this.subscribeOnce(
       data.token.userFields.channel + "/" + channel
     );
+    Logger.log(`Subscribed to response channel: ${data.token.userFields.channel + "/" + channel}`);
     await this.publish(channel, data);
     const response = await responsePromise;
     return response.toString();

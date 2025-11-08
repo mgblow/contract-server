@@ -1,4 +1,4 @@
-import { Controller } from "@nestjs/common";
+import { Controller, Logger } from "@nestjs/common";
 import { MessagePattern, Payload } from "@nestjs/microservices";
 import { ContractsService } from "./contracts.service";
 import { CreateContractPayload } from "./dto/create-contract.payload";
@@ -35,6 +35,7 @@ export class ContractsController {
 
   @MessagePattern("searchContracts")
   searchContracts(@Payload() searchContractsDto: SearchContractsPayload) {
+    Logger.log("Received searchContracts message with payload: " + JSON.stringify(searchContractsDto));
     return this.contractsService.searchByQuery(searchContractsDto);
   }
 
