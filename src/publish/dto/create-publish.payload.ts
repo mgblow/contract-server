@@ -1,6 +1,6 @@
 export class CreatePublishPayload {
   token: any;
-  categoryId: string;
+  topicId: string;
   options: string[];
   media: string[];
   name: string;

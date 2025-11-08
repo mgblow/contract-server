@@ -21,18 +21,18 @@ export class PublishesService {
   }
 
   async create(createPublishPayload: CreatePublishPayload): Promise<void> {
-    const findCategory = JSON.parse(await this.requestService.send("findCategory", {
+    const findTopic = JSON.parse(await this.requestService.send("findTopic", {
       token: createPublishPayload.token,
-      _id: createPublishPayload.categoryId
+      _id: createPublishPayload.topicId
     }));
-    if (!findCategory.data.success) {
+    if (!findTopic.data.success) {
       await this.responseService.sendError(createPublishPayload.token.userFields.channel, {
-        "category._id": "category _id does not exists"
+        "topic._id": "topic _id does not exists"
       });
     }
-    // fetch category's options
-    findCategory.data.body.options.forEach(option => {
-      // options should be equal to category's options
+    // fetch topic's options
+    findTopic.data.body.options.forEach(option => {
+      // options should be equal to topic's options
     });
     createPublishPayload.userId = createPublishPayload.token.userFields.id;
     const createdPublish = new this.publishModel(createPublishPayload);
@@ -82,7 +82,7 @@ export class PublishesService {
       this.publishModel.countDocuments()
     ]);
     await this.responseService.sendSuccess(fetchPublishesPayload.token.userFields.channel + "/fetchPublishes", {
-      categories: publishes,
+      publishes: publishes,
       total
     });
   }
