@@ -1,15 +1,15 @@
 import { Module } from "@nestjs/common";
-import { CategoriesModule } from "./categories/categories.module";
+import { TopicsModule } from "./topics/topics.module";
 import { BusinessesModule } from "./businesses/businesses.module";
 import { LabelsModule } from "./labels/labelsModule";
-import { ContractsModule } from "./contracts/contracts.module";
+import { PublishesModule } from "./publish/publishes.module";
 
 
 @Module({
   imports: [
-    CategoriesModule,
+    TopicsModule,
     BusinessesModule,
-    ContractsModule,
+    PublishesModule,
     LabelsModule,
   ]
 })

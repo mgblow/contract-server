@@ -1,4 +1,4 @@
-export class CreateCategoryPayload {
+export class CreateTopicPayload {
   token: any;
   parent: string;
   name: string;

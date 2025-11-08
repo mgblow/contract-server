@@ -1,4 +1,4 @@
-export class CreateContractPayload {
+export class CreatePublishPayload {
   token: any;
   categoryId: string;
   options: string[];

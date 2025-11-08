@@ -2,7 +2,7 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { MessagesController } from "./messages.controller";
 import { MessagesService } from "./messages.service";
 
-describe("CategoriesController", () => {
+describe("TopicsController", () => {
   let controller: MessagesController;
 
   beforeEach(async () => {
