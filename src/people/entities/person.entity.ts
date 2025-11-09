@@ -1,11 +1,11 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Document } from "mongoose";
 
-export type PeopleDocument = People & Document;
+export type PersonDocument = Person & Document;
 
 @Schema({ timestamps: true })
-export class People extends Document {
-  // 🔹 Basic info
+export class Person extends Document {
+  // Basic info
   @Prop({ required: true, unique: true })
   phone: string;
 
@@ -15,7 +15,7 @@ export class People extends Document {
   @Prop({ type: Boolean, default: true })
   firstLogin: boolean;
 
-  // 🔹 Profile info
+  // Profile info
   @Prop({ type: String })
   username?: string;
 
@@ -28,7 +28,7 @@ export class People extends Document {
   @Prop({ type: String })
   bio?: string;
 
-  // 🔹 Interests and hobbies
+  // Interests and hobbies
   @Prop({ type: [String], default: [] })
   hobbies?: string[];
 
@@ -38,7 +38,7 @@ export class People extends Document {
   @Prop({ type: String })
   customInterests?: string;
 
-  // 🔹 Avatar config
+  // Avatar config
   @Prop({
     type: {
       avatarStyle: { type: String },
@@ -58,7 +58,7 @@ export class People extends Document {
   })
   avatarConfig?: Record<string, string>;
 
-  // 🔹 Timestamps (in ms)
+  // Timestamps (in ms)
   @Prop({ type: Number })
   createdAt?: number;
 
@@ -66,10 +66,10 @@ export class People extends Document {
   updatedAt?: number;
 }
 
-export const PeopleSchema = SchemaFactory.createForClass(People);
+export const PersonSchema = SchemaFactory.createForClass(Person);
 
 // Set timestamps manually in ms
-PeopleSchema.pre<People>('save', function (next) {
+PersonSchema.pre<Person>('save', function (next) {
   const now = Date.now();
   if (!this.createdAt) this.createdAt = now;
   this.updatedAt = now;

@@ -1,26 +1,30 @@
-import { Injectable } from '@nestjs/common';
-import { CreatePersonDto } from './dto/create-person.dto';
-import { UpdatePersonDto } from './dto/update-person.dto';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { UpdateAvatarDto } from "./dto/update-avatar.dto";
+import { UpdateProfileDto } from "./dto/update-profile.dto";
+import { Person } from "./entities/person.entity"; // Your Mongoose or TypeORM entity
+import { Model } from "mongoose";
+import { InjectModel } from "@nestjs/mongoose";
 
 @Injectable()
 export class PeopleService {
-  create(createPersonDto: CreatePersonDto) {
-    return 'This action adds a new person';
+  constructor(@InjectModel(Person.name) private personModel: Model<Person>) {}
+
+
+  async updateAvatar(updateAvatarDto: UpdateAvatarDto) {
+    const person = await this.personModel.findById(updateAvatarDto._id);
+    if (!person) throw new NotFoundException('Person not found');
+
+    person.avatarConfig = { ...person.avatarConfig, ...updateAvatarDto };
+    await person.save();
+    return person;
   }
 
-  findAll() {
-    return `This action returns all people`;
-  }
+  async updateProfile(updateProfileDto: UpdateProfileDto) {
+    const person = await this.personModel.findById(updateProfileDto._id);
+    if (!person) throw new NotFoundException('Person not found');
 
-  findOne(id: number) {
-    return `This action returns a #${id} person`;
-  }
-
-  update(id: number, updatePersonDto: UpdatePersonDto) {
-    return `This action updates a #${id} person`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} person`;
+    Object.assign(person, updateProfileDto);
+    await person.save();
+    return person;
   }
 }

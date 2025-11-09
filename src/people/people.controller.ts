@@ -1,35 +1,20 @@
-import { Controller } from '@nestjs/common';
-import { MessagePattern, Payload } from '@nestjs/microservices';
-import { PeopleService } from './people.service';
-import { CreatePersonDto } from './dto/create-person.dto';
-import { UpdatePersonDto } from './dto/update-person.dto';
+import { Controller } from "@nestjs/common";
+import { MessagePattern, Payload } from "@nestjs/microservices";
+import { PeopleService } from "./people.service";
+import { UpdateAvatarDto } from "./dto/update-avatar.dto";
+import { UpdateProfileDto } from "./dto/update-profile.dto";
 
 @Controller()
 export class PeopleController {
   constructor(private readonly peopleService: PeopleService) {}
 
-  @MessagePattern('createPerson')
-  create(@Payload() createPersonDto: CreatePersonDto) {
-    return this.peopleService.create(createPersonDto);
+  @MessagePattern('updatePersonAvatar')
+  updateAvatar(@Payload() payload: UpdateAvatarDto) {
+    return this.peopleService.updateAvatar(payload);
   }
 
-  @MessagePattern('findAllPeople')
-  findAll() {
-    return this.peopleService.findAll();
-  }
-
-  @MessagePattern('findOnePerson')
-  findOne(@Payload() id: number) {
-    return this.peopleService.findOne(id);
-  }
-
-  @MessagePattern('updatePerson')
-  update(@Payload() updatePersonDto: UpdatePersonDto) {
-    return this.peopleService.update(updatePersonDto.id, updatePersonDto);
-  }
-
-  @MessagePattern('removePerson')
-  remove(@Payload() id: number) {
-    return this.peopleService.remove(id);
+  @MessagePattern('updatePersonProfile')
+  updateProfile(@Payload() payload: UpdateProfileDto) {
+    return this.peopleService.updateProfile(payload);
   }
 }
