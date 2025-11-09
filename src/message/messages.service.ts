@@ -47,7 +47,7 @@ export class MessagesService {
       });
     }
     //   existingMessage.set(updateMessagePayload);
-    //   const updatedOption = await existingMessage.save();
+    //   config updatedOption = await existingMessage.save();
     //   await this.responseService.sendSuccess(updateMessagePayload.token.userFields.channel, updatedOption);
   }
 
