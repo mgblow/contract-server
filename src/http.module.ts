@@ -7,7 +7,7 @@ import { FileModule } from './files/file.module';
   imports: [
     AuthModule,
     ProxyModule,
-    FileModule
+    FileModule,
   ]
 })
 export class HttpModule {

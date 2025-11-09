@@ -26,3 +26,6 @@ export const businessTypes = [
   { id: 'hospitality', name: 'مهمان‌نوازی' },
   { id: 'other', name: 'سایر' },
 ];
+
+
+export const profilePicks = {}

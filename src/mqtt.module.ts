@@ -4,6 +4,7 @@ import { BusinessesModule } from "./businesses/businesses.module";
 import { LabelsModule } from "./labels/labelsModule";
 import { PublishesModule } from "./publish/publishes.module";
 import { PeopleModule } from "./people/people.module";
+import { PicksModule } from "./picks/picks.module";
 
 
 @Module({
@@ -13,6 +14,7 @@ import { PeopleModule } from "./people/people.module";
     PublishesModule,
     LabelsModule,
     PeopleModule,
+    PicksModule
   ]
 })
 export class MqttModule {

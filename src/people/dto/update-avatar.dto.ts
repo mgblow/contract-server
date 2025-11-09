@@ -12,7 +12,7 @@ import {
   eyebrowTypes,
   mouthTypes,
   skinColors,
-} from '../config/person.avatar.config';
+} from '../../picks/config/person.avatar.config';
 
 export class UpdateAvatarDto {
 

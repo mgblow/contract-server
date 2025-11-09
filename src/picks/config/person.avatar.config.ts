@@ -180,3 +180,19 @@ export const skinColors = [
   { value: 'DarkBrown', label: 'قهوه‌ای تیره', hex: '#AE5D29' },
   { value: 'Black', label: 'مشکی', hex: '#614335' }
 ];
+
+
+export const avatarPicks = {
+  avatarStyles,
+  topTypes,
+  accessoriesTypes,
+  hairColors,
+  facialHairTypes,
+  facialHairColors,
+  clotheTypes,
+  clotheColors,
+  eyeTypes,
+  eyebrowTypes,
+  mouthTypes,
+  skinColors
+}
