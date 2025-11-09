@@ -64,6 +64,24 @@ export class Person extends Document {
 
   @Prop({ type: Number })
   updatedAt?: number;
+  gender: string;
+
+  @Prop({
+    type: {
+      type: String,
+      enum: ['Point'],
+      default: 'Point'
+    },
+    coordinates: {
+      type: [Number], // [longitude, latitude]
+      index: '2dsphere'
+    }
+  })
+  location: {
+    type: string;
+    coordinates: number[];
+  };
+  popularityScore: number;
 }
 
 export const PersonSchema = SchemaFactory.createForClass(Person);

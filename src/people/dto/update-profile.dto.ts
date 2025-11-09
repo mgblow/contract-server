@@ -2,6 +2,7 @@ import { IsOptional, IsString, IsNumber, IsArray } from 'class-validator';
 import { hobbiesList, businessTypes } from '../config/person.profile.config';
 
 export class UpdateProfileDto {
+  token: any;
   _id: string;
 
   @IsOptional()

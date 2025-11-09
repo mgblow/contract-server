@@ -16,6 +16,7 @@ import {
 
 export class UpdateAvatarDto {
 
+  token: any;
   _id: string
 
   @IsOptional()

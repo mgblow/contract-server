@@ -8,13 +8,36 @@ import { UpdateProfileDto } from "./dto/update-profile.dto";
 export class PeopleController {
   constructor(private readonly peopleService: PeopleService) {}
 
+  // --- Avatar ---
   @MessagePattern('updatePersonAvatar')
   updateAvatar(@Payload() payload: UpdateAvatarDto) {
     return this.peopleService.updateAvatar(payload);
   }
 
+  // --- Profile ---
   @MessagePattern('updatePersonProfile')
   updateProfile(@Payload() payload: UpdateProfileDto) {
     return this.peopleService.updateProfile(payload);
+  }
+
+  // --- Search People ---
+  @MessagePattern('searchPeople')
+  searchPeople(@Payload() payload: { token: any; query: string; filters?: string; limit?: number; page?: number; sort?: string[] }) {
+    const { token, query, filters, limit, page, sort } = payload;
+    return this.peopleService.searchPeople(token, query, filters, limit, page, sort);
+  }
+
+  // --- Create Person ---
+  @MessagePattern('createPerson')
+  createPerson(@Payload() payload: { personData: any; token: any }) {
+    const { personData, token } = payload;
+    return this.peopleService.createPerson(personData, token);
+  }
+
+  // --- Delete Person ---
+  @MessagePattern('deletePerson')
+  deletePerson(@Payload() payload: { id: string; token: any }) {
+    const { id, token } = payload;
+    return this.peopleService.deletePerson(id, token);
   }
 }
