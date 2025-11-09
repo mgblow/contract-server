@@ -5,11 +5,12 @@ import { ResponseService } from "../injection/response.service";
 import { MongooseModule } from "@nestjs/mongoose";
 import { Person, PersonSchema } from "./entities/person.entity";
 import { DatabaseConnectionModule } from "../injection/DatabaseConnection";
+import { MeiliSearchService } from "./meilisearch.service";
 
 @Module({
   imports: [DatabaseConnectionModule, MongooseModule.forFeature([{ name: Person.name, schema: PersonSchema }])],
   controllers: [PeopleController],
-  providers: [PeopleService, ResponseService]
+  providers: [PeopleService, ResponseService, MeiliSearchService]
 })
 export class PeopleModule {
 }

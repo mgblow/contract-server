@@ -1,4 +1,5 @@
 version: '3'
+
 services:
   mongo:
     image: mongo:latest
@@ -6,6 +7,10 @@ services:
       - "27017:27017"
     networks:
       - shared_network
+    restart: unless-stopped
+    volumes:
+      - mongo_data:/data/db
+
   emqx:
     image: emqx:latest
     ports:
@@ -15,11 +20,39 @@ services:
       - "18083:18083"
     networks:
       - shared_network
+    restart: unless-stopped
+
   redis:
     image: redis/redis-stack:latest
     ports:
       - "6379:6379"
     networks:
       - shared_network
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+
+  meilisearch:
+    image: getmeili/meilisearch:latest
+    container_name: meilisearch
+    environment:
+      - MEILI_ENV=production
+      - MEILI_NO_ANALYTICS=true
+      - MEILI_MASTER_KEY=supersecuremasterkey123  # change this in production
+      - MEILI_DB_PATH=/meili_data
+      - MEILI_HTTP_ADDR=0.0.0.0:7700
+    ports:
+      - "7700:7700"
+    volumes:
+      - meili_data:/meili_data
+    networks:
+      - shared_network
+    restart: unless-stopped
+
 networks:
   shared_network:
+
+volumes:
+  mongo_data:
+  redis_data:
+  meili_data:
