@@ -4,6 +4,7 @@ import { PicksService } from "./picks.service";
 import { PicksController } from "./picks.controller";
 import { Pick, PickSchema } from "./entities/pick.entity";
 import { ResponseService } from "../injection/response.service";
+import { MeiliSearchService } from "./meilisearch.service";
 
 @Module({
   imports: [
@@ -12,7 +13,7 @@ import { ResponseService } from "../injection/response.service";
     ])
   ],
   controllers: [PicksController],
-  providers: [PicksService, ResponseService],
+  providers: [PicksService, ResponseService, MeiliSearchService],
   exports: [PicksService]
 })
 export class PicksModule {}
