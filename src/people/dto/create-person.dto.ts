@@ -1,1 +1,4 @@
-export class CreatePersonDto {}
+export class CreatePersonDto {
+  token: any;
+  phone: string;
+}

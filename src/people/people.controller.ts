@@ -3,6 +3,7 @@ import { MessagePattern, Payload } from "@nestjs/microservices";
 import { PeopleService } from "./people.service";
 import { UpdateAvatarDto } from "./dto/update-avatar.dto";
 import { UpdateProfileDto } from "./dto/update-profile.dto";
+import { CreatePersonDto } from "./dto/create-person.dto";
 
 @Controller()
 export class PeopleController {
@@ -29,9 +30,8 @@ export class PeopleController {
 
   // --- Create Person ---
   @MessagePattern('createPerson')
-  createPerson(@Payload() payload: { personData: any; token: any }) {
-    const { personData, token } = payload;
-    return this.peopleService.createPerson(personData, token);
+  createPerson(@Payload() payload: CreatePersonDto) {
+    return this.peopleService.createPerson(payload);
   }
 
   // --- Delete Person ---

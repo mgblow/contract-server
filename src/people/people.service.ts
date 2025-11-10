@@ -6,6 +6,7 @@ import { Model } from "mongoose";
 import { InjectModel } from "@nestjs/mongoose";
 import { ResponseService } from "../injection/response.service";
 import { MeiliSearchService } from "./meilisearch.service";
+import { CreatePersonDto } from "./dto/create-person.dto";
 
 @Injectable()
 export class PeopleService {
@@ -98,13 +99,24 @@ export class PeopleService {
   }
 
   // --- Create Person ---
-  async createPerson(personData: Partial<Person>, token: any) {
-    const person = new this.personModel(personData);
-    await person.save();
-    await this.indexPerson(person);
+  async createPerson(createPersonDto:CreatePersonDto) {
+    // --- Check if person already exists by phone ---
+    let person = await this.personModel.findOne({ phone: createPersonDto.phone });
 
-    return this.responseService.sendSuccess(token.userFields.channel + "/createPerson", person);
+    if (!person) {
+      // --- Create new person if not found ---
+      person = new this.personModel(createPersonDto);
+      await person.save();
+      await this.indexPerson(person);
+    }
+
+    // --- Return success with existing or newly created person ---
+    return this.responseService.sendSuccess(
+      createPersonDto.token.userFields.channel + "/createPerson",
+      person
+    );
   }
+
 
   // --- Delete Person ---
   async deletePerson(id: string, token: any) {

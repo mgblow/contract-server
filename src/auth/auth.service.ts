@@ -1,23 +1,21 @@
-import { Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { Inject, Injectable, InternalServerErrorException, Logger, NotFoundException } from "@nestjs/common";
 import { v4 as uuidv4 } from "uuid";
 import { SignupDto } from "./dto/signup.dto";
 import { VerifyDto } from "./dto/verify.dto";
 import { AesService } from "../injection/aes.service";
 import { config } from "dotenv";
-import { InjectModel } from "@nestjs/mongoose";
-import { Model } from "mongoose";
-import { Person } from "./entities/person.entity";
+import { RequestService } from "../injection/request.service";
 
 @Injectable()
 export class AuthService {
-
   private readonly TOKEN_SECRET: string;
   private readonly TOKEN_EXPIRY: number;
+  private readonly logger = new Logger(AuthService.name);
 
   constructor(
     private readonly aesService: AesService,
+    private readonly requestService: RequestService,
     @Inject("REDIS_CLIENT") private readonly redisClient: any,
-    @InjectModel(Person.name) private readonly personModel: Model<Person>
   ) {
     config();
     this.TOKEN_SECRET = process.env["TOKEN_SECRET"];
@@ -25,89 +23,153 @@ export class AuthService {
   }
 
   async entry(signupDto: SignupDto) {
-    //  Check if person exists in MongoDB
-    let person = await this.personModel.findOne({ phone: signupDto.phone });
-    if (!person) {
-      person = new this.personModel({ phone: signupDto.phone });
-      await person.save();
-    }
+    const start = Date.now();
+    const phone = signupDto.phone;
+    const channelId = uuidv4();
 
-    // Check if user exists in Redis
-    const redisKey = `users:${person._id.toString()}`;
-    const userFields = await this.redisClient.hgetall(redisKey);
+    this.logger.log(`[ENTRY] Start signup for phone: ${phone}`);
 
-    if (Object.keys(userFields).length === 0) {
-      // Map MongoDB person fields to Redis
-      const userData = {
-        id: person._id.toString(),
-        phone: person.phone,
-        firstLogin: person.firstLogin.toString(), // Redis stores strings
-        email: person.email || ""
+    try {
+      // Check person with People service
+      const token = { userFields: { channel: channelId } };
+      const personData = JSON.parse(
+        await this.requestService.send("createPerson", {
+          token,
+          phone
+        })
+      );
+
+      if (!personData.data.success) {
+        this.logger.error(
+          `[ENTRY] People service returned failure for phone: ${phone}`
+        );
+        throw new InternalServerErrorException(
+          "[auth] Error during connectivity with People service"
+        );
+      }
+
+      const person = personData.data.body;
+      this.logger.debug(
+        `[ENTRY] Retrieved person (id=${person._id}) for phone: ${phone}`
+      );
+
+      // Check if user exists in Redis
+      const redisKey = `users:${person._id.toString()}`;
+      const userFields = await this.redisClient.hgetall(redisKey);
+
+      if (Object.keys(userFields).length === 0) {
+        this.logger.log(`[ENTRY] New Redis user record for ${phone}`);
+
+        const userData = {
+          id: person._id.toString(),
+          phone: person.phone,
+          firstLogin: person.firstLogin,
+          email: person.email || ""
+        };
+
+        await this.redisClient.send_command(
+          "HSET",
+          [redisKey, ...Object.entries(userData).flat()]
+        );
+
+        this.logger.debug(`[ENTRY] Redis record created for ${phone}`);
+      } else {
+        this.logger.debug(`[ENTRY] Existing Redis record found for ${phone}`);
+      }
+
+      // Generate verification code
+      const verify = {
+        uId: person._id.toString(),
+        code: "000" // Replace with random in production
       };
-
+      const verifyKey = `verifications:${phone}`;
       await this.redisClient.send_command(
         "HSET",
-        [redisKey, ...Object.entries(userData).flat()]
+        [verifyKey, ...Object.entries(verify).flat()]
       );
+      await this.redisClient.send_command("EXPIRE", [verifyKey, 120]); // 2 min
+
+      this.logger.log(
+        `[ENTRY] Verification code generated for ${phone}, expires in 120s`
+      );
+
+      this.logger.log(
+        `[ENTRY] Signup completed for ${phone} in ${Date.now() - start}ms`
+      );
+
+      return { success: true };
+    } catch (error) {
+      this.logger.error(
+        `[ENTRY] Failed signup for ${phone}: ${error.message}`,
+        error.stack
+      );
+      throw error;
     }
-
-    // Generate 2-step verification code
-    const verify = {
-      uId: person._id.toString(),
-      code: "000" // replace with real random code in production
-    };
-    const verifyKey = `verifications:${signupDto.phone}`;
-    await this.redisClient.send_command(
-      "HSET",
-      [verifyKey, ...Object.entries(verify).flat()]
-    );
-    await this.redisClient.send_command("EXPIRE", [verifyKey, 120]); // 2 min
-
-    return { success: true };
   }
 
   async verify(verifyDto: VerifyDto) {
-    const verificationKey = `verifications:${verifyDto.phone}`;
-    const verificationFields = await this.redisClient.hgetall(verificationKey);
+    const phone = verifyDto.phone;
+    const start = Date.now();
 
-    if (Object.keys(verificationFields).length === 0) {
-      throw new NotFoundException(`Verification for phone ${verifyDto.phone} not found`);
+    this.logger.log(`[VERIFY] Start verification for phone: ${phone}`);
+
+    try {
+      const verificationKey = `verifications:${phone}`;
+      const verificationFields = await this.redisClient.hgetall(verificationKey);
+
+      if (Object.keys(verificationFields).length === 0) {
+        this.logger.warn(`[VERIFY] No verification record found for ${phone}`);
+        throw new NotFoundException(`Verification for phone ${phone} not found`);
+      }
+
+      if (verificationFields.code !== verifyDto.code) {
+        this.logger.warn(`[VERIFY] Invalid verification code for ${phone}`);
+        throw new NotFoundException(`Invalid verification code for phone ${phone}`);
+      }
+
+      const redisKey = `users:${verificationFields.uId}`;
+      const userFields = await this.redisClient.hgetall(redisKey);
+
+      if (Object.keys(userFields).length === 0) {
+        this.logger.error(`[VERIFY] No Redis user found for ${phone}`);
+        throw new NotFoundException(`User data for phone ${phone} not found`);
+      }
+
+      this.logger.debug(`[VERIFY] Redis user data found for ${phone}`);
+
+      // Generate token
+      const secret = await this.aesService.encrypt(this.TOKEN_SECRET);
+      userFields.channel = userFields.id;
+      const data = {
+        secret,
+        userFields,
+        expiresAt: Date.now() + this.TOKEN_EXPIRY
+      };
+      const token = await this.aesService.encrypt(JSON.stringify(data));
+
+      this.logger.log(`[VERIFY] Token generated for ${phone}`);
+
+      this.logger.log(
+        `[VERIFY] Verification completed for ${phone} in ${Date.now() - start}ms`
+      );
+
+      return {
+        success: true,
+        firstLogin: userFields.firstLogin,
+        channel: userFields.channel,
+        token
+      };
+    } catch (error) {
+      this.logger.error(
+        `[VERIFY] Verification failed for ${phone}: ${error.message}`,
+        error.stack
+      );
+      throw error;
     }
-    if (verificationFields.code !== verifyDto.code) {
-      throw new NotFoundException(`Invalid verification code for phone ${verifyDto.phone}`);
-    }
-    
-    // Fetch user's Redis data
-    const redisKey = `users:${verificationFields.uId}`;
-    const userFields = await this.redisClient.hgetall(redisKey);
-    if (Object.keys(userFields).length === 0) {
-      throw new NotFoundException(`User data for phone ${verifyDto.phone} not found`);
-    }
-
-    // Generate token
-    const secret = await this.aesService.encrypt(this.TOKEN_SECRET);
-    userFields.channel = userFields.id;
-    const data = {
-      secret,
-      userFields,
-      expiresAt: Date.now() + this.TOKEN_EXPIRY
-    };
-    const token = await this.aesService.encrypt(JSON.stringify(data));
-
-    // // Optional: mark firstLogin false in MongoDB
-    // await this.personModel.updateOne(
-    //   { phone: verifyDto.phone },
-    //   { firstLogin: false, updatedAt: Date.now() }
-    // );
-
-    return {
-      success: true,
-      channel: userFields.channel,
-      token
-    };
   }
 
   async refresh() {
+    this.logger.warn("[REFRESH] Token refresh endpoint not implemented yet");
     // implement refresh logic here
   }
 }
