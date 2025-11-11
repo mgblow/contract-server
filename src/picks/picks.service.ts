@@ -53,20 +53,33 @@ export class PicksService {
     }
   }
 
+
   // --- Get Pick Config (from static configs) ---
-  async getPickConfig(dto: { token: any }) {
+  async getAvatarPickConfig(dto: { token: any }) {
     try {
+      // Helper function to filter free picks recursively
+      const filterFreePicks = (picks: Record<string, any[]>) => {
+        const filtered: Record<string, any[]> = {};
+        for (const [category, items] of Object.entries(picks)) {
+          filtered[category] = items.filter(item => item.isPaid === false);
+        }
+        return filtered;
+      };
+
+      const freeAvatarPicks = filterFreePicks(avatarPicks);
+      const freeProfilePicks = filterFreePicks(profilePicks);
+
       const config = {
-        avatarPicks,
-        profilePicks,
+        avatarPicks: freeAvatarPicks,
+        profilePicks: freeProfilePicks,
       };
       return this.responseService.sendSuccess(
-        dto.token.userFields.channel + "/getPickConfig",
+        dto.token.userFields.channel + "/getAvatarPickConfig",
         config,
       );
     } catch (error) {
       return this.responseService.sendError(
-        dto.token.userFields.channel + "/getPickConfig",
+        dto.token.userFields.channel + "/getAvatarPickConfig",
         { error: error.message || "Failed to fetch pick config" },
       );
     }

@@ -3,8 +3,6 @@ import { hobbiesList, businessTypes } from '../../picks/config/person.profile.co
 
 export class UpdateProfileDto {
   token: any;
-  _id: string;
-
   @IsOptional()
   @IsString()
   username?: string;
@@ -33,4 +31,6 @@ export class UpdateProfileDto {
   @IsOptional()
   @IsString()
   customInterests?: string;
+
+  gender: string;
 }

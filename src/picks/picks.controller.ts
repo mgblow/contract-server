@@ -22,8 +22,8 @@ export class PicksController {
     return this.picksService.completeTransaction(payload.id);
   }
 
-  @MessagePattern('getPickConfig')
+  @MessagePattern('getAvatarPickConfig')
   getPickConfig(dto: { token: any }) {
-    return this.picksService.getPickConfig(dto);
+    return this.picksService.getAvatarPickConfig(dto);
   }
 }

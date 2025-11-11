@@ -12,13 +12,13 @@ export class PeopleController {
   // --- Avatar ---
   @MessagePattern('updatePersonAvatar')
   updateAvatar(@Payload() payload: UpdateAvatarDto) {
-    return this.peopleService.updateAvatar(payload);
+    return this.peopleService.updatePersonAvatar(payload);
   }
 
   // --- Profile ---
   @MessagePattern('updatePersonProfile')
   updateProfile(@Payload() payload: UpdateProfileDto) {
-    return this.peopleService.updateProfile(payload);
+    return this.peopleService.updatePersonProfile(payload);
   }
 
   // --- Search People ---

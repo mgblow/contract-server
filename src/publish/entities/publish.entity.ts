@@ -7,45 +7,11 @@ export class Publish extends Document {
   @Prop({ type: String, ref: "Person" })
   userId: string;
 
-  @Prop({ type: String, ref: "Category" })
-  categoryId: string;
-
-  @Prop({ type: [{ type: String }] })
-  options: string[];
-
-  @Prop({ type: [{ type: String }] })
-  media: string[];
+  @Prop({ type: String, ref: "Topic" })
+  topicId: string;
 
   @Prop({ required: true })
   text: string;
-
-  @Prop({ type: String })
-  type: string;
-
-  @Prop({ type: [{ type: String }] })
-  tags: string[];
-
-  @Prop({ type: Number })
-  price: number;
-
-  @Prop({ type: String })
-  status: string;
-
-  // Location fields
-  @Prop({ type: String })
-  address: string;
-
-  @Prop({ type: String })
-  city: string;
-
-  @Prop({ type: String })
-  state: string;
-
-  @Prop({ type: String })
-  country: string;
-
-  @Prop({ type: String })
-  zipCode: string;
 
   @Prop({
     type: {

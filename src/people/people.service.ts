@@ -18,41 +18,60 @@ export class PeopleService {
   ) {}
 
   // --- Update Avatar ---
-  async updateAvatar(updateAvatarDto: UpdateAvatarDto) {
-    const person = await this.personModel.findById(updateAvatarDto._id);
+  async updatePersonAvatar(updateAvatarDto: UpdateAvatarDto) {
+    const person = await this.personModel.findById(updateAvatarDto.token.userFields.id);
     if (!person) {
       return await this.responseService.sendError(
-        updateAvatarDto.token.userFields.channel + "/updateAvatar",
+        updateAvatarDto.token.userFields.channel + "/updatePersonAvatar",
         { "avatar.user": "Person not found" }
       );
     }
 
-    person.avatarConfig = { ...person.avatarConfig, ...updateAvatarDto };
-    await person.save();
+    person.avatarConfig = {
+      avatarStyle: updateAvatarDto.avatarStyle || person.avatarConfig?.avatarStyle,
+      topType: updateAvatarDto.topType || person.avatarConfig?.topType,
+      accessoriesType: updateAvatarDto.accessoriesType || person.avatarConfig?.accessoriesType,
+      hairColor: updateAvatarDto.hairColor || person.avatarConfig?.hairColor,
+      facialHairType: updateAvatarDto.facialHairType || person.avatarConfig?.facialHairType,
+      facialHairColor: updateAvatarDto.facialHairColor || person.avatarConfig?.facialHairColor,
+      clotheType: updateAvatarDto.clotheType || person.avatarConfig?.clotheType,
+      clotheColor: updateAvatarDto.clotheColor || person.avatarConfig?.clotheColor,
+      eyeType: updateAvatarDto.eyeType || person.avatarConfig?.eyeType,
+      eyebrowType: updateAvatarDto.eyebrowType || person.avatarConfig?.eyebrowType,
+      mouthType: updateAvatarDto.mouthType || person.avatarConfig?.mouthType,
+      skinColor: updateAvatarDto.skinColor || person.avatarConfig?.skinColor,
+    };    await person.save();
     await this.indexPerson(person);
 
     return this.responseService.sendSuccess(
-      updateAvatarDto.token.userFields.channel + "/updateAvatar",
+      updateAvatarDto.token.userFields.channel + "/updatePersonAvatar",
       person
     );
   }
 
   // --- Update Profile ---
-  async updateProfile(updateProfileDto: UpdateProfileDto) {
-    const person = await this.personModel.findById(updateProfileDto._id);
+  async updatePersonProfile(updateProfileDto: UpdateProfileDto) {
+    const person = await this.personModel.findById(updateProfileDto.token.userFields.id);
     if (!person) {
       return await this.responseService.sendError(
-        updateProfileDto.token.userFields.channel + "/updateProfile",
+        updateProfileDto.token.userFields.channel + "/updatePersonProfile",
         { "profile.user": "Person not found" }
       );
     }
+    // validate candidate username
+    person.username = updateProfileDto.username;
 
-    Object.assign(person, updateProfileDto);
+    person.gender = updateProfileDto.gender;
+    person.age = updateProfileDto.age;
+    person.bio = updateProfileDto.bio;
+    person.business = updateProfileDto.business;
+    person.hobbies = updateProfileDto.hobbies;
+
     await person.save();
     await this.indexPerson(person);
 
     return this.responseService.sendSuccess(
-      updateProfileDto.token.userFields.channel + "/updateProfile",
+      updateProfileDto.token.userFields.channel + "/updatePersonProfile",
       person
     );
   }

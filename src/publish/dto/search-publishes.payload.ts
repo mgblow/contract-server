@@ -3,4 +3,5 @@ export class SearchPublishesPayload {
   query: string;
   limit: number;
   page: number;
+  topicId: string;
 }

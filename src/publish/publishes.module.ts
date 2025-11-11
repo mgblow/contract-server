@@ -6,11 +6,12 @@ import { MongooseModule } from "@nestjs/mongoose";
 import { Publish, PublishSchema } from "./entities/publish.entity";
 import { DatabaseConnectionModule } from "../injection/DatabaseConnection";
 import { RequestService } from "../injection/request.service";
+import { MeiliSearchService } from "./meilisearch.service";
 
 @Module({
   imports: [DatabaseConnectionModule, MongooseModule.forFeature([{ name: Publish.name, schema: PublishSchema }])],
   controllers: [PublishesController],
-  providers: [PublishesService, ResponseService, RequestService]
+  providers: [PublishesService, ResponseService, RequestService, MeiliSearchService]
 })
 export class PublishesModule {
 }

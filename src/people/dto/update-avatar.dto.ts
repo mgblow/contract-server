@@ -17,7 +17,6 @@ import {
 export class UpdateAvatarDto {
 
   token: any;
-  _id: string
 
   @IsOptional()
   @IsIn(avatarStyles.map(a => a.value))
