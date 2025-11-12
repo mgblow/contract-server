@@ -70,10 +70,15 @@ export class PublishesService implements OnModuleInit {
 
     if (!findTopic.data.success) {
       // Handle topic not found
-      return;
     }
 
     createPublishPayload.userId = createPublishPayload.token.userFields.id;
+
+    if(createPublishPayload.topicId == undefined && createPublishPayload.location != undefined) {
+      createPublishPayload.topicId = "/public/globe";
+    } else if(createPublishPayload.topicId == null) {
+      createPublishPayload.topicId = "/public";
+    }
     const createdPublish = new this.publishModel(createPublishPayload);
     const publish = await createdPublish.save();
 

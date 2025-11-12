@@ -55,38 +55,28 @@ export class MeiliSearchService implements OnModuleInit {
 
   private async initializeIndex() {
     try {
-      this.publishIndex = this.client.index<PublishDocument>(this.indexName);
+      // 1️⃣ Get or create index and set primary key
+      const indexes = await this.client.getIndexes();
+      const existing = indexes.results.find(i => i.uid === this.indexName);
 
+      if (!existing) {
+        await this.client.createIndex(this.indexName, { primaryKey: 'id' });
+        this.logger.log(`Created index "${this.indexName}" with primary key 'id'`);
+      } else if (!existing.primaryKey) {
+        await this.client.index(this.indexName).update({ primaryKey: 'id' });
+        this.logger.log(`Updated index "${this.indexName}" to use primary key 'id'`);
+      }
+
+      // 2️⃣ Then configure settings
+      this.publishIndex = this.client.index<PublishDocument>(this.indexName);
       await this.publishIndex.updateSettings({
         searchableAttributes: ['text', 'userId', 'topicId'],
         filterableAttributes: ['userId', 'topicId', '_geo', 'createdAt'],
         sortableAttributes: ['createdAt'],
-        rankingRules: [
-          'words',
-          'typo',
-          'proximity',
-          'attribute',
-          'sort',
-          'exactness',
-        ],
-        displayedAttributes: [
-          'id',
-          'userId',
-          'topicId',
-          'text',
-          '_geo',
-          'createdAt',
-        ],
-        typoTolerance: {
-          enabled: true,
-          minWordSizeForTypos: {
-            oneTypo: 5,
-            twoTypos: 9,
-          },
-        },
-        pagination: {
-          maxTotalHits: 10000,
-        },
+        rankingRules: ['words', 'typo', 'proximity', 'attribute', 'sort', 'exactness'],
+        displayedAttributes: ['id', 'userId', 'topicId', 'text', '_geo', 'createdAt'],
+        typoTolerance: { enabled: true, minWordSizeForTypos: { oneTypo: 5, twoTypos: 9 } },
+        pagination: { maxTotalHits: 10000 },
       });
 
       this.logger.log(`MeiliSearch index "${this.indexName}" initialized`);
@@ -99,8 +89,9 @@ export class MeiliSearchService implements OnModuleInit {
   async indexDocument(publish: any): Promise<void> {
     try {
       const document: PublishDocument = this.transformToDocument(publish);
-      await this.publishIndex.addDocuments([document]);
-      this.logger.debug(`Indexed document: ${document.id}`);
+      const result  = await this.publishIndex.addDocuments([document]);
+      this.logger.debug(`Indexed document: ${document}`);
+      this.logger.debug(`Indexed document: ${result}`);
     } catch (error) {
       this.logger.error(`Failed to index document: ${publish._id}`, error);
       throw error;
