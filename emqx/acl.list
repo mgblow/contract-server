@@ -1,0 +1,16 @@
+%% ------------------ Admin users: full access ----------------------
+
+%% Allow admin users to publish or subscribe to any topic
+{allow, {username, {re, "^admin_.*$"}}, all, ["#"]}.
+
+%% ------------------ Normal users: restricted to their own namespace ----------------------
+
+%% Allow normal users to subscribe to only their clientid space
+{allow, all, subscribe, ["${clientid}/#"]}.
+
+%% Allow normal users to publish only to their clientid space
+{allow, all, publish, ["${clientid}/#"]}.
+
+%% ------------------ Deny everything else ----------------------
+
+{deny, all}.

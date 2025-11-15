@@ -153,10 +153,14 @@ export class AuthService {
         `[VERIFY] Verification completed for ${phone} in ${Date.now() - start}ms`
       );
 
+      // call EMQX api to create mqtt client for this user
+      const brokerCredentials = await this.createEmqxUser(userFields.id, token);
       return {
         success: true,
+        _id: userFields.id,
         firstLogin: userFields.firstLogin,
         channel: userFields.channel,
+        brokerCredentials: brokerCredentials,
         token
       };
     } catch (error) {
@@ -165,6 +169,57 @@ export class AuthService {
         error.stack
       );
       throw error;
+    }
+  }
+
+  async createEmqxUser(userId: string, password: string) {
+    const url = process.env.EMQX_APP_URL + "/authentication/password_based:built_in_database/users";
+
+    const createUserResponse = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization":
+          "Basic " + Buffer.from(`${process.env.EMQX_APP_KEY}:${process.env.EMQX_APP_SECRET}`).toString("base64"),      },
+      body: JSON.stringify({
+        user_id: userId,
+        password: password,
+        is_superuser: false,
+      }),
+    });
+
+    if(createUserResponse.ok) {
+      const data = await createUserResponse.json();
+      console.log("User created:", data);
+      return data;
+    }
+
+    if (!createUserResponse.ok) {
+      const createUserResponseError = await createUserResponse.json();
+      if(createUserResponseError.code === 'ALREADY_EXISTS') {
+        const url = process.env.EMQX_APP_URL + "/authentication/password_based:built_in_database/users/" + userId;
+        const updateUserResponse = await fetch(url, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization":
+              "Basic " + Buffer.from(`${process.env.EMQX_APP_KEY}:${process.env.EMQX_APP_SECRET}`).toString("base64"),      },
+          body: JSON.stringify({
+            password: password,
+          }),
+        });
+        if(updateUserResponse.ok) {
+          const updatedData = await updateUserResponse.json();
+          this.logger.log("User updated:", updatedData);
+          return updatedData;
+        }
+        const updateUserResponseError = await createUserResponseError.json();
+        this.logger.error("Error while creating new user:", updateUserResponseError);
+        return null;
+      }else{
+        console.error("Error creating user:", createUserResponseError);
+        return null;
+      }
     }
   }
 
