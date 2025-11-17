@@ -339,6 +339,46 @@ export class PublishesService implements OnModuleInit {
   }
 
   /**
+   * Find publishes by person with filters:
+   * - personId (required)
+   * - fromDate / toDate
+   * - isPublic
+   * - limit
+   */
+  async findPublishes(payload: any) {
+    const query: any = {
+      userId: payload.personId
+    };
+
+    // Date range filter
+    if (payload.fromDate || payload.toDate) {
+      query.createdAt = {};
+      if (payload.fromDate) query.createdAt.$gte = payload.fromDate;
+      if (payload.toDate)   query.createdAt.$lte = payload.toDate;
+    }
+
+    // Public filter
+    if (payload.isPublic !== undefined) {
+      query.isPublic = payload.isPublic;
+    }
+
+    const limit = payload.limit ?? 50;
+
+    const publishes = await this.publishModel
+      .find(query)
+      .sort({ createdAt: -1 }) // latest first
+      .limit(limit)
+      .lean()
+      .exec();
+
+    await this.responseService.sendSuccess(
+      payload.token.userFields.channel + "/findPublishes",
+      publishes
+    );
+  }
+
+
+  /**
    * Bulk reindex all documents to MeiliSearch
    */
   async reindexAll(channel: string): Promise<void> {

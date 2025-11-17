@@ -40,4 +40,11 @@ export class PeopleController {
     const { id, token } = payload;
     return this.peopleService.deletePerson(id, token);
   }
+
+  // --- Get Person ---
+  @MessagePattern('getPerson')
+  getPerson(@Payload() payload: { id: string; token: any }) {
+    const { id, token } = payload;
+    return this.peopleService.getPerson(id, token);
+  }
 }

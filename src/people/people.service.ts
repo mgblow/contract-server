@@ -7,6 +7,7 @@ import { InjectModel } from "@nestjs/mongoose";
 import { ResponseService } from "../injection/response.service";
 import { MeiliSearchService } from "./meilisearch.service";
 import { CreatePersonDto } from "./dto/create-person.dto";
+import { RequestService } from "../injection/request.service";
 
 @Injectable()
 export class PeopleService {
@@ -14,6 +15,7 @@ export class PeopleService {
   constructor(
     @InjectModel(Person.name) private personModel: Model<Person>,
     private readonly responseService: ResponseService,
+    private readonly requestService: RequestService,
     private readonly meiliService: MeiliSearchService, // MeiliSearch injection
   ) {}
 
@@ -144,4 +146,33 @@ export class PeopleService {
 
     return this.responseService.sendSuccess(token.userFields.channel + "/deletePerson", { id });
   }
+
+  async getPerson(id: string, token: any) {
+    // --- 1. Fetch person ---
+    try{
+      const person = await this.personModel.findById(id);
+
+      if (!person) {
+        return this.responseService.sendError(
+          token.userFields.channel + "/getPerson",
+          { "person": "Person not found" }
+        );
+      }
+
+      // --- 2. Define 3-day window ---
+      const now = new Date();
+      const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+
+
+      // --- 4. Return person with recent public publishes ---
+      return this.responseService.sendSuccess(token.userFields.channel + "/getPerson", person);
+
+    } catch (err) {
+      return this.responseService.sendError(
+        token.userFields.channel + "/getPerson",
+        { "bad": "bad data given!" }
+      );
+    }
+  }
+
 }

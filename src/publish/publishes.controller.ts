@@ -44,4 +44,17 @@ export class PublishesController {
     return this.publishesService.fetchAll(fetchPublishsDto);
   }
 
+
+  @MessagePattern("findPublishes")
+  findPublishes(@Payload() payload: {
+    token: any,
+    personId: string;
+    fromDate?: Date;
+    toDate?: Date;
+    isPublic?: boolean;
+    limit?: number;
+  }) {
+    return this.publishesService.findPublishes(payload);
+  }
+
 }
