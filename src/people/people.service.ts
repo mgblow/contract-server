@@ -175,4 +175,27 @@ export class PeopleService {
     }
   }
 
+  async getMe(token: any) {
+    // --- 1. Fetch person ---
+    try{
+      const person = await this.personModel.findById(token.userFields.id);
+
+      if (!person) {
+        return this.responseService.sendError(
+          token.userFields.channel + "/getMe",
+          { "person": "Me not found" }
+        );
+      }
+
+      // --- 4. Return person with recent public publishes ---
+      return this.responseService.sendSuccess(token.userFields.channel + "/getMe", person);
+
+    } catch (err) {
+      return this.responseService.sendError(
+        token.userFields.channel + "/getMe",
+        { "bad": "bad data given!" }
+      );
+    }
+  }
+
 }

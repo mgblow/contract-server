@@ -47,4 +47,11 @@ export class PeopleController {
     const { id, token } = payload;
     return this.peopleService.getPerson(id, token);
   }
+
+  // --- Get Person ---
+  @MessagePattern('getMe')
+  getMe(@Payload() payload: { token: any }) {
+    const { token } = payload;
+    return this.peopleService.getMe(token);
+  }
 }

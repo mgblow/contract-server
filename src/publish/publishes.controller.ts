@@ -45,7 +45,7 @@ export class PublishesController {
   }
 
 
-  @MessagePattern("findPublishes")
+  @MessagePattern("getPublishes")
   findPublishes(@Payload() payload: {
     token: any,
     personId: string;
@@ -54,7 +54,7 @@ export class PublishesController {
     isPublic?: boolean;
     limit?: number;
   }) {
-    return this.publishesService.findPublishes(payload);
+    return this.publishesService.getPublishes(payload);
   }
 
 }

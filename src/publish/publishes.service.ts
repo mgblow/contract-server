@@ -345,7 +345,7 @@ export class PublishesService implements OnModuleInit {
    * - isPublic
    * - limit
    */
-  async findPublishes(payload: any) {
+  async getPublishes(payload: any) {
     const query: any = {
       userId: payload.personId
     };
@@ -372,7 +372,7 @@ export class PublishesService implements OnModuleInit {
       .exec();
 
     await this.responseService.sendSuccess(
-      payload.token.userFields.channel + "/findPublishes",
+      payload.token.userFields.channel + "/getPublishes",
       publishes
     );
   }
