@@ -68,9 +68,7 @@ export class TexesService implements OnModuleInit {
    * Normalize location field from payload to GeoJSON { type, coordinates }
    */
   private normalizeLocation(
-    raw:
-      | CreateTexPayload["location"]
-      | UpdateTexPayload["location"],
+    raw: CreateTexPayload["location"] | UpdateTexPayload["location"],
   ): Tex["location"] | undefined {
     if (!raw) return undefined;
 
@@ -99,6 +97,48 @@ export class TexesService implements OnModuleInit {
     }
 
     return undefined;
+  }
+
+  /**
+   * Charge the user's gem wallet for a tex (gift / boost) using Gems service.
+   * Returns the final amount charged (0 if no charge).
+   * Throws if gem charge fails (not enough balance, etc).
+   */
+  private async chargeGemsForTex(
+    payload: CreateTexPayload,
+  ): Promise<number> {
+    const rawGemValue = payload.gemValue ?? 0;
+
+    // If no gift & no gems → nothing to charge
+    if (!payload.giftId && rawGemValue <= 0) {
+      return 0;
+    }
+
+    const amountToCharge = Math.max(0, rawGemValue);
+    if (amountToCharge <= 0) {
+      return 0;
+    }
+
+    const token = payload.token;
+
+    try {
+      await this.requestService.send("spendGems", {
+        token,
+        amount: amountToCharge,
+        reason: payload.giftId ? "TEX_GIFT" : "TEX",
+        metadata: {
+          giftId: payload.giftId ?? null,
+          topicId: payload.topicId ?? null,
+        },
+      });
+
+      // If RequestService.send throws on error, reaching here means success.
+      // We return the amount we tried to charge.
+      return amountToCharge;
+    } catch (error) {
+      this.logger.error("spendGems failed in chargeGemsForTex", error);
+      throw error;
+    }
   }
 
   /**
@@ -143,38 +183,15 @@ export class TexesService implements OnModuleInit {
       // 5) Normalize location
       const location = this.normalizeLocation(createTexPayload.location);
 
-      // 6) Optional: check gems & gifts with external services
-      if (createTexPayload.giftId) {
-        try {
-          // Example: validate that this gift is usable (stub topic name, you can change)
-          await this.requestService.send("validateGift", {
-            token: createTexPayload.token,
-            giftId: createTexPayload.giftId,
-          });
-        } catch (error) {
-          this.logger.error("validateGift failed", error);
-          await this.responseService.sendError(channel + "/createTex", {
-            message: "Gift is not available or invalid",
-          });
-          return;
-        }
-      }
-
-      if (createTexPayload.gemValue && createTexPayload.gemValue > 0) {
-        try {
-          // Example: spend gems from wallet service
-          await this.requestService.send("spendGems", {
-            token: createTexPayload.token,
-            amount: createTexPayload.gemValue,
-            reason: "TEX_GIFT",
-          });
-        } catch (error) {
-          this.logger.error("spendGems failed", error);
-          await this.responseService.sendError(channel + "/createTex", {
-            message: "Not enough gems or wallet error",
-          });
-          return;
-        }
+      // 6) Charge gems via Gems service if needed (gift or gemValue)
+      let chargedGemAmount = 0;
+      try {
+        chargedGemAmount = await this.chargeGemsForTex(createTexPayload);
+      } catch (err) {
+        await this.responseService.sendError(channel + "/createTex", {
+          message: "Not enough gems or wallet error",
+        });
+        return;
       }
 
       // 7) Create and save Tex
@@ -185,7 +202,7 @@ export class TexesService implements OnModuleInit {
         location,
         isPublic,
         giftId: createTexPayload.giftId ?? null,
-        gemValue: createTexPayload.gemValue ?? 0,
+        gemValue: chargedGemAmount, // actual charged gems
       });
 
       const tex = await createdTex.save();
@@ -198,10 +215,7 @@ export class TexesService implements OnModuleInit {
         this.logger.error(`Failed to index tex ${tex._id} to MeiliSearch`, error);
       }
 
-      await this.responseService.sendSuccess(
-        channel + "/createTex",
-        tex,
-      );
+      await this.responseService.sendSuccess(channel + "/createTex", tex);
     } catch (error) {
       this.logger.error("createTex failed", error);
       await this.responseService.sendError(channel + "/createTex", {
@@ -225,7 +239,7 @@ export class TexesService implements OnModuleInit {
         return;
       }
 
-      // Update fields
+      // Update fields (NO gem / gift changes here to avoid abuse)
       if (updateTexPayload.text !== undefined) {
         existingTex.text = updateTexPayload.text;
       }
@@ -233,17 +247,16 @@ export class TexesService implements OnModuleInit {
         existingTex.topicId = updateTexPayload.topicId;
       }
       if (updateTexPayload.location !== undefined) {
-        existingTex.location = this.normalizeLocation(updateTexPayload.location);
+        existingTex.location = this.normalizeLocation(
+          updateTexPayload.location,
+        );
       }
       if (updateTexPayload.isPublic !== undefined) {
         existingTex.isPublic = updateTexPayload.isPublic;
       }
-      if (updateTexPayload.giftId !== undefined) {
-        existingTex.giftId = updateTexPayload.giftId;
-      }
-      if (updateTexPayload.gemValue !== undefined) {
-        existingTex.gemValue = updateTexPayload.gemValue;
-      }
+
+      // intentionally ignoring updateTexPayload.giftId & gemValue
+      // if you ever want to allow that, you must also call chargeGemsForTex again.
 
       const updatedTex = await existingTex.save();
 
@@ -258,10 +271,7 @@ export class TexesService implements OnModuleInit {
         );
       }
 
-      await this.responseService.sendSuccess(
-        channel + "/updateTex",
-        updatedTex,
-      );
+      await this.responseService.sendSuccess(channel + "/updateTex", updatedTex);
     } catch (error) {
       this.logger.error("updateTex failed", error);
       await this.responseService.sendError(channel + "/updateTex", {
@@ -277,8 +287,8 @@ export class TexesService implements OnModuleInit {
     const channel = searchTexesPayload.token.userFields.channel;
 
     try {
-      const offset = searchTexesPayload.limit *
-        (searchTexesPayload.page - 1);
+      const offset =
+        searchTexesPayload.limit * (searchTexesPayload.page - 1);
 
       // Build filters for Meili
       const filters: any = {};
@@ -289,7 +299,6 @@ export class TexesService implements OnModuleInit {
         filters.userId = searchTexesPayload.userId;
       }
       if (searchTexesPayload.giftId) {
-        // You may need to add giftId as filterable attribute in Meili index
         filters.giftId = searchTexesPayload.giftId;
       }
 
@@ -304,16 +313,16 @@ export class TexesService implements OnModuleInit {
         `MeiliSearch found ${results.estimatedTotalHits} texes matching query "${searchTexesPayload.query}" in ${results.processingTimeMs}ms`,
       );
 
-      await this.responseService.sendSuccess(
-        channel + "/searchTexes",
-        {
-          texes: results.hits,
-          total: results.estimatedTotalHits,
-          processingTimeMs: results.processingTimeMs,
-        },
-      );
+      await this.responseService.sendSuccess(channel + "/searchTexes", {
+        texes: results.hits,
+        total: results.estimatedTotalHits,
+        processingTimeMs: results.processingTimeMs,
+      });
     } catch (error) {
-      this.logger.error("MeiliSearch search failed, falling back to MongoDB", error);
+      this.logger.error(
+        "MeiliSearch search failed, falling back to MongoDB",
+        error,
+      );
       // Fallback to MongoDB regex search
       await this.searchByQueryMongoDB(searchTexesPayload);
     }
@@ -354,10 +363,10 @@ export class TexesService implements OnModuleInit {
       `MongoDB found ${total} texes matching query "${searchTexesPayload.query}"`,
     );
 
-    await this.responseService.sendSuccess(
-      channel + "/searchTexes",
-      { texes, total },
-    );
+    await this.responseService.sendSuccess(channel + "/searchTexes", {
+      texes,
+      total,
+    });
   }
 
   /**
@@ -467,10 +476,10 @@ export class TexesService implements OnModuleInit {
       this.texModel.countDocuments(),
     ]);
 
-    await this.responseService.sendSuccess(
-      channel + "/fetchTexes",
-      { texes, total },
-    );
+    await this.responseService.sendSuccess(channel + "/fetchTexes", {
+      texes,
+      total,
+    });
   }
 
   async delete(deleteTexPayload: DeleteTexPayload): Promise<void> {
@@ -495,20 +504,14 @@ export class TexesService implements OnModuleInit {
       }
     }
 
-    await this.responseService.sendSuccess(
-      channel + "/deleteTex",
-      deleted,
-    );
+    await this.responseService.sendSuccess(channel + "/deleteTex", deleted);
   }
 
   async findById(findTexPayload: FindTexPayload): Promise<void> {
     const channel = findTexPayload.token.userFields.channel;
     const tex = await this.texModel.findById(findTexPayload._id).exec();
 
-    await this.responseService.sendSuccess(
-      channel + "/findTex",
-      tex,
-    );
+    await this.responseService.sendSuccess(channel + "/findTex", tex);
   }
 
   /**
@@ -550,10 +553,7 @@ export class TexesService implements OnModuleInit {
       .lean()
       .exec();
 
-    await this.responseService.sendSuccess(
-      channel + "/getTexes",
-      texes,
-    );
+    await this.responseService.sendSuccess(channel + "/getTexes", texes);
   }
 
   /**
