@@ -1,18 +1,22 @@
-version: '3'
+version: '3.9'
 
 services:
   mongo:
     image: mongo:latest
+    container_name: mongo
+    restart: unless-stopped
     ports:
       - "27017:27017"
     networks:
       - shared_network
-    restart: unless-stopped
     volumes:
       - mongo_data:/data/db
+      - mongo_config:/data/configdb   # ensures full persistence
 
   emqx:
     image: emqx:latest
+    container_name: emqx
+    restart: unless-stopped
     ports:
       - "1883:1883"
       - "8883:8883"
@@ -20,15 +24,19 @@ services:
       - "18083:18083"
     networks:
       - shared_network
-    restart: unless-stopped
+    volumes:
+      - emqx_data:/opt/emqx/data       # message data, retained messages
+      - emqx_log:/opt/emqx/log         # logs
+      - emqx_etc:/opt/emqx/etc         # <--- PERSIST CONFIGS HERE
 
   redis:
     image: redis/redis-stack:latest
+    container_name: redis
+    restart: unless-stopped
     ports:
       - "6379:6379"
     networks:
       - shared_network
-    restart: unless-stopped
     volumes:
       - redis_data:/data
 
@@ -38,21 +46,25 @@ services:
     environment:
       - MEILI_ENV=production
       - MEILI_NO_ANALYTICS=true
-      - MEILI_MASTER_KEY=supersecuremasterkey123  # change this in production
+      - MEILI_MASTER_KEY=supersecuremasterkey123
       - MEILI_DB_PATH=/meili_data
       - MEILI_HTTP_ADDR=0.0.0.0:7700
+    restart: unless-stopped
     ports:
       - "7700:7700"
-    volumes:
-      - meili_data:/meili_data
     networks:
       - shared_network
-    restart: unless-stopped
+    volumes:
+      - meili_data:/meili_data
 
 networks:
   shared_network:
 
 volumes:
   mongo_data:
+  mongo_config:
   redis_data:
   meili_data:
+  emqx_data:
+  emqx_log:
+  emqx_etc:

@@ -1,8 +1,6 @@
 import { Module } from "@nestjs/common";
 import { TopicsModule } from "./topics/topics.module";
-import { BusinessesModule } from "./businesses/businesses.module";
-import { LabelsModule } from "./labels/labelsModule";
-import { PublishesModule } from "./publish/publishes.module";
+import { TexesModule } from "./tex/texes.module";
 import { PeopleModule } from "./people/people.module";
 import { PicksModule } from "./picks/picks.module";
 
@@ -10,9 +8,7 @@ import { PicksModule } from "./picks/picks.module";
 @Module({
   imports: [
     TopicsModule,
-    BusinessesModule,
-    PublishesModule,
-    LabelsModule,
+    TexesModule,
     PeopleModule,
     PicksModule
   ]

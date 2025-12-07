@@ -2,7 +2,7 @@ import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Document } from "mongoose";
 
 @Schema()
-export class Publish extends Document {
+export class Tex extends Document {
 
   @Prop({ type: String, ref: "Person" })
   userId: string;
@@ -30,7 +30,7 @@ export class Publish extends Document {
   };
 }
 
-export const PublishSchema = SchemaFactory.createForClass(Publish);
+export const TexSchema = SchemaFactory.createForClass(Tex);
 
 // Create 2dsphere index for geospatial queries
-PublishSchema.index({ location: '2dsphere' });
+TexSchema.index({ location: '2dsphere' });

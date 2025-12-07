@@ -1,4 +1,4 @@
-export class CreatePublishPayload {
+export class CreateTexPayload {
   token: any;
   userId: string;
   topicId: string;
