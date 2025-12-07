@@ -3,6 +3,7 @@ import { AuthModule } from "./auth/auth.module";
 import { ProxyModule } from "./proxy/proxy.module";
 import { FileModule } from './files/file.module';
 import { LynksModule } from './lynks/lynks.module';
+import { GemsModule } from './gems/gems.module';
 
 @Module({
   imports: [
@@ -10,6 +11,7 @@ import { LynksModule } from './lynks/lynks.module';
     ProxyModule,
     FileModule,
     LynksModule,
+    GemsModule,
   ]
 })
 export class HttpModule {
