@@ -1,35 +1,35 @@
 import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
-import { Index, MeiliSearch } from "meilisearch";
+import { MeiliSearch, Index } from "meilisearch";
 
-export interface PublishDocument {
-  id: string;
+export interface TexSearchDocument {
+  id: string;          // Meili primary key
   userId: string;
   topicId: string;
   text: string;
-  _geo: {
+
+  _geo: {              // for geo search
     lat: number;
     lng: number;
   };
-  createdAt?: number;
+
+  isPublic: boolean;
+  giftId?: string | null;
+  gemValue?: number;
+
+  createdAt?: number;  // timestamp (ms)
 }
 
-export interface SearchFilters {
+export interface TexSearchFilters {
   userId?: string;
   topicId?: string;
-  geoRadius?: {
-    lat: number;
-    lng: number;
-    radius: number;
-  };
-  geoBoundingBox?: {
-    topLeft: { lat: number; lng: number };
-    bottomRight: { lat: number; lng: number };
-  };
+  giftId?: string;
+  isPublic?: boolean;
+  geoRadius?: { lat: number; lng: number; radius: number };
 }
 
-export interface SearchOptions {
+export interface TexSearchOptions {
   query: string;
-  filters?: SearchFilters;
+  filters?: TexSearchFilters;
   limit?: number;
   offset?: number;
   sort?: string[];
@@ -38,14 +38,15 @@ export interface SearchOptions {
 @Injectable()
 export class MeiliSearchService implements OnModuleInit {
   private readonly logger = new Logger(MeiliSearchService.name);
+
   private client: MeiliSearch;
-  private publishIndex: Index<PublishDocument>;
-  private readonly indexName = 'publishes';
+  private index: Index;
+  private readonly indexName = "texes";
 
   constructor() {
     this.client = new MeiliSearch({
-      host: process.env.MEILI_HOST || 'http://127.0.0.1:7700',
-      apiKey: process.env.MEILI_API_KEY || '',
+      host: process.env.MEILI_HOST || "http://127.0.0.1:7700",
+      apiKey: process.env.MEILI_API_KEY || "",
     });
   }
 
@@ -55,214 +56,279 @@ export class MeiliSearchService implements OnModuleInit {
 
   private async initializeIndex() {
     try {
-      // 1️⃣ Get or create index and set primary key
+      // Create / ensure index
       const indexes = await this.client.getIndexes();
-      const existing = indexes.results.find(i => i.uid === this.indexName);
+      const existing = indexes.results.find((i) => i.uid === this.indexName);
 
       if (!existing) {
-        await this.client.createIndex(this.indexName, { primaryKey: 'id' });
-        this.logger.log(`Created index "${this.indexName}" with primary key 'id'`);
+        await this.client.createIndex(this.indexName, { primaryKey: "id" });
+        this.logger.log(
+          `Created Meili index "${this.indexName}" with primary key "id"`,
+        );
       } else if (!existing.primaryKey) {
-        await this.client.index(this.indexName).update({ primaryKey: 'id' });
-        this.logger.log(`Updated index "${this.indexName}" to use primary key 'id'`);
+        await this.client.index(this.indexName).update({ primaryKey: "id" });
+        this.logger.log(
+          `Updated Meili index "${this.indexName}" to use primary key "id"`,
+        );
       }
 
-      // 2️⃣ Then configure settings
-      this.publishIndex = this.client.index<PublishDocument>(this.indexName);
-      await this.publishIndex.updateSettings({
-        searchableAttributes: ['text', 'userId', 'topicId'],
-        filterableAttributes: ['userId', 'topicId', '_geo', 'createdAt'],
-        sortableAttributes: ['createdAt'],
-        rankingRules: ['words', 'typo', 'proximity', 'attribute', 'sort', 'exactness'],
-        displayedAttributes: ['id', 'userId', 'topicId', 'text', '_geo', 'createdAt'],
-        typoTolerance: { enabled: true, minWordSizeForTypos: { oneTypo: 5, twoTypos: 9 } },
+      this.index = this.client.index(this.indexName);
+
+      // Configure settings (searchable, filterable, sortable, ranking)
+      await this.index.updateSettings({
+        searchableAttributes: ["text", "topicId", "userId", "giftId"],
+        filterableAttributes: [
+          "topicId",
+          "userId",
+          "giftId",
+          "isPublic",
+          "_geo",
+          "createdAt",
+        ],
+        sortableAttributes: ["createdAt", "gemValue"],
+        rankingRules: [
+          "words",
+          "typo",
+          "proximity",
+          "attribute",
+          "sort",
+          "exactness",
+        ],
+        displayedAttributes: [
+          "id",
+          "userId",
+          "topicId",
+          "text",
+          "giftId",
+          "gemValue",
+          "isPublic",
+          "_geo",
+          "createdAt",
+        ],
+        typoTolerance: {
+          enabled: true,
+          minWordSizeForTypos: { oneTypo: 5, twoTypos: 9 },
+        },
         pagination: { maxTotalHits: 10000 },
       });
 
-      this.logger.log(`MeiliSearch index "${this.indexName}" initialized`);
+      this.logger.log(`Meili index "${this.indexName}" initialized`);
     } catch (error) {
-      this.logger.error('Failed to initialize MeiliSearch index', error);
+      this.logger.error("Failed to initialize Meili index", error);
       throw error;
     }
   }
 
-  async indexDocument(publish: any): Promise<void> {
-    try {
-      const document: PublishDocument = this.transformToDocument(publish);
-      const result  = await this.publishIndex.addDocuments([document]);
-      this.logger.debug(`Indexed document: ${document}`);
-      this.logger.debug(`Indexed document: ${result}`);
-    } catch (error) {
-      this.logger.error(`Failed to index document: ${publish._id}`, error);
-      throw error;
-    }
-  }
-
-  async indexDocuments(publishes: any[]): Promise<void> {
-    try {
-      const documents = publishes.map(p => this.transformToDocument(p));
-      const result = await this.publishIndex.addDocuments(documents);
-      this.logger.log(`Indexed ${documents.length} documents. Task: ${result.taskUid}`);
-    } catch (error) {
-      this.logger.error('Failed to index documents', error);
-      throw error;
-    }
-  }
-
-  async updateDocument(publish: any): Promise<void> {
-    try {
-      const document = this.transformToDocument(publish);
-      await this.publishIndex.updateDocuments([document]);
-      this.logger.debug(`Updated document: ${document.id}`);
-    } catch (error) {
-      this.logger.error(`Failed to update document: ${publish._id}`, error);
-      throw error;
-    }
-  }
-
-  async deleteDocument(publishId: string): Promise<void> {
-    try {
-      await this.publishIndex.deleteDocument(publishId);
-      this.logger.debug(`Deleted document: ${publishId}`);
-    } catch (error) {
-      this.logger.error(`Failed to delete document: ${publishId}`, error);
-      throw error;
-    }
-  }
-
-  async search(options: SearchOptions) {
-    try {
-      const filterStrings = this.buildFilters(options.filters);
-
-      const searchParams: any = {
-        q: options.query || '',
-        limit: options.limit || 20,
-        offset: options.offset || 0,
-        filter: filterStrings.length > 0 ? filterStrings : undefined,
-        sort: options.sort || ['createdAt:desc'],
-      };
-
-      const results = await this.publishIndex.search(searchParams.q, searchParams);
-
-      return {
-        hits: results.hits,
-        estimatedTotalHits: results.estimatedTotalHits,
-        limit: results.limit,
-        offset: results.offset,
-        processingTimeMs: results.processingTimeMs,
-        query: results.query,
-      };
-    } catch (error) {
-      this.logger.error('Search failed', error);
-      throw error;
-    }
-  }
-
-  async searchNearby(
-    lat: number,
-    lng: number,
-    radius: number,
-    query: string = '',
-    additionalFilters?: SearchFilters,
-  ) {
-    return this.search({
-      query,
-      filters: {
-        ...additionalFilters,
-        geoRadius: { lat, lng, radius },
+  /** Transform Mongo Tex document to Meili document */
+  private transformToDocument(tex: any): TexSearchDocument {
+    return {
+      id: tex._id?.toString() ?? tex.id?.toString(),
+      userId: tex.userId?.toString() ?? "",
+      topicId: tex.topicId?.toString() ?? "",
+      text: tex.text ?? "",
+      _geo: {
+        lat: tex.location?.coordinates?.[1] ?? 0,
+        lng: tex.location?.coordinates?.[0] ?? 0,
       },
-    });
+      isPublic: tex.isPublic ?? true,
+      giftId: tex.giftId ?? null,
+      gemValue: tex.gemValue ?? 0,
+      createdAt: tex.createdAt
+        ? new Date(tex.createdAt).getTime()
+        : Date.now(),
+    };
   }
 
-  async searchInBoundingBox(
-    topLeft: { lat: number; lng: number },
-    bottomRight: { lat: number; lng: number },
-    query: string = '',
-    additionalFilters?: SearchFilters,
-  ) {
-    return this.search({
-      query,
-      filters: {
-        ...additionalFilters,
-        geoBoundingBox: { topLeft, bottomRight },
-      },
-    });
+  private buildFilters(filters?: TexSearchFilters): string[] {
+    if (!filters) return [];
+
+    const filterStrings: string[] = [];
+
+    if (filters.topicId) {
+      filterStrings.push(`topicId = "${filters.topicId}"`);
+    }
+    if (filters.userId) {
+      filterStrings.push(`userId = "${filters.userId}"`);
+    }
+    if (filters.giftId) {
+      filterStrings.push(`giftId = "${filters.giftId}"`);
+    }
+    if (filters.isPublic !== undefined) {
+      filterStrings.push(`isPublic = ${filters.isPublic ? "true" : "false"}`);
+    }
+    if (filters.geoRadius) {
+      const { lat, lng, radius } = filters.geoRadius;
+      filterStrings.push(`_geoRadius(${lat}, ${lng}, ${radius})`);
+    }
+
+    return filterStrings;
   }
 
-  async searchByTopic(topicId: string, query: string = '', limit: number = 20) {
-    return this.search({
-      query,
-      filters: { topicId },
-      limit,
-    });
-  }
+  // ─────────────────────────────────────────────────────────────────────────────
+  // CRUD on index
+  // ─────────────────────────────────────────────────────────────────────────────
 
-  async searchByUser(userId: string, query: string = '', limit: number = 20) {
-    return this.search({
-      query,
-      filters: { userId },
-      limit,
-    });
-  }
-
-  async getStats() {
+  async indexDocument(tex: any): Promise<void> {
     try {
-      return await this.publishIndex.getStats();
+      const doc = this.transformToDocument(tex);
+      const res = await this.index.addDocuments([doc]);
+      this.logger.debug(
+        `Indexed tex ${doc.id} in Meili (taskUid=${res.taskUid})`,
+      );
     } catch (error) {
-      this.logger.error('Failed to get stats', error);
+      this.logger.error(`Failed to index tex ${tex._id}`, error);
+      throw error;
+    }
+  }
+
+  async indexDocuments(texes: any[]): Promise<void> {
+    if (!texes.length) return;
+
+    try {
+      const docs = texes.map((t) => this.transformToDocument(t));
+      const res = await this.index.addDocuments(docs);
+      this.logger.log(
+        `Indexed ${docs.length} texes in Meili (taskUid=${res.taskUid})`,
+      );
+    } catch (error) {
+      this.logger.error("Failed to index tex documents", error);
+      throw error;
+    }
+  }
+
+  async updateDocument(tex: any): Promise<void> {
+    try {
+      const doc = this.transformToDocument(tex);
+      await this.index.updateDocuments([doc]);
+      this.logger.debug(`Updated tex ${doc.id} in Meili`);
+    } catch (error) {
+      this.logger.error(`Failed to update tex ${tex._id}`, error);
+      throw error;
+    }
+  }
+
+  async deleteDocument(texId: string): Promise<void> {
+    try {
+      await this.index.deleteDocument(texId);
+      this.logger.debug(`Deleted tex ${texId} from Meili`);
+    } catch (error) {
+      this.logger.error(`Failed to delete tex ${texId}`, error);
       throw error;
     }
   }
 
   async clearIndex(): Promise<void> {
     try {
-      await this.publishIndex.deleteAllDocuments();
-      this.logger.warn('All documents deleted from index');
+      await this.index.deleteAllDocuments();
+      this.logger.warn("All tex documents deleted from Meili index");
     } catch (error) {
-      this.logger.error('Failed to clear index', error);
+      this.logger.error("Failed to clear tex index", error);
       throw error;
     }
   }
 
-  private transformToDocument(publish: any): PublishDocument {
-    return {
-      id: publish._id.toString(),
-      userId: publish.userId?.toString() || publish.userId,
-      topicId: publish.topicId?.toString() || publish.topicId,
-      text: publish.text,
-      _geo: {
-        lat: publish.location?.coordinates?.[1] || 0,
-        lng: publish.location?.coordinates?.[0] || 0,
-      },
-      createdAt: publish.createdAt ? new Date(publish.createdAt).getTime() : Date.now(),
-    };
+  async getStats() {
+    try {
+      return await this.index.getStats();
+    } catch (error) {
+      this.logger.error("Failed to get Meili index stats", error);
+      throw error;
+    }
   }
 
-  private buildFilters(filters?: SearchFilters): string[] {
-    if (!filters) return [];
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Search APIs
+  // ─────────────────────────────────────────────────────────────────────────────
 
-    const filterStrings: string[] = [];
+  async search(options: TexSearchOptions) {
+    try {
+      const filterStrings = this.buildFilters(options.filters);
+      const params: any = {
+        q: options.query || "",
+        limit: options.limit ?? 20,
+        offset: options.offset ?? 0,
+        sort: options.sort ?? ["createdAt:desc"],
+      };
 
-    if (filters.userId) {
-      filterStrings.push(`userId = "${filters.userId}"`);
+      if (filterStrings.length > 0) {
+        params.filter = filterStrings;
+      }
+
+      const res = await this.index.search(params.q, params);
+
+      return {
+        hits: res.hits,
+        estimatedTotalHits: res.estimatedTotalHits,
+        limit: res.limit,
+        offset: res.offset,
+        processingTimeMs: res.processingTimeMs,
+        query: res.query,
+      };
+    } catch (error) {
+      this.logger.error("Tex search in Meili failed", error);
+      throw error;
     }
+  }
 
-    if (filters.topicId) {
-      filterStrings.push(`topicId = "${filters.topicId}"`);
-    }
+  async searchByTopic(
+    topicId: string,
+    query: string = "",
+    limit: number = 50,
+    offset: number = 0,
+  ) {
+    return this.search({
+      query,
+      filters: { topicId },
+      limit,
+      offset,
+    });
+  }
 
-    if (filters.geoRadius) {
-      const { lat, lng, radius } = filters.geoRadius;
-      filterStrings.push(`_geoRadius(${lat}, ${lng}, ${radius})`);
-    }
+  async searchByUser(
+    userId: string,
+    query: string = "",
+    limit: number = 50,
+    offset: number = 0,
+  ) {
+    return this.search({
+      query,
+      filters: { userId },
+      limit,
+      offset,
+    });
+  }
 
-    if (filters.geoBoundingBox) {
-      const { topLeft, bottomRight } = filters.geoBoundingBox;
-      filterStrings.push(
-        `_geoBoundingBox([${topLeft.lat}, ${topLeft.lng}], [${bottomRight.lat}, ${bottomRight.lng}])`,
-      );
-    }
+  async searchByGift(
+    giftId: string,
+    query: string = "",
+    limit: number = 50,
+    offset: number = 0,
+  ) {
+    return this.search({
+      query,
+      filters: { giftId },
+      limit,
+      offset,
+    });
+  }
 
-    return filterStrings;
+  async searchNearby(
+    lat: number,
+    lng: number,
+    radius: number,
+    query: string = "",
+    additionalFilters?: Omit<TexSearchFilters, "geoRadius">,
+    limit: number = 50,
+    offset: number = 0,
+  ) {
+    return this.search({
+      query,
+      filters: {
+        ...(additionalFilters || {}),
+        geoRadius: { lat, lng, radius },
+      },
+      limit,
+      offset,
+    });
   }
 }
