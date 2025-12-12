@@ -1,8 +1,8 @@
 export class CreateLynkTexPayload {
   token: any;
-  lynkId: string;
+  topic: string;
   text: string;
   // [lng, lat]
   location?: [number, number];
-  giftId?: string;
+  gemdId?: string;
 }

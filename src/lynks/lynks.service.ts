@@ -159,7 +159,7 @@ export class LynksService implements OnModuleInit {
 
     try {
       const lynk = await this.lynkModel
-        .findOne({ id: payload.lynkId, isDeleted: false })
+        .findOne({ id: payload.topic, isDeleted: false })
         .exec();
 
       if (!lynk) {
@@ -188,7 +188,7 @@ export class LynksService implements OnModuleInit {
             coordinates: [payload.location[0], payload.location[1]],
           }
           : undefined,
-        giftId: payload.giftId ?? null,
+        giftId: payload.gemdId ?? null,
       });
 
       const saved = await lynkTex.save();

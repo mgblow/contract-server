@@ -24,19 +24,19 @@ export class RequestService {
     this.client = mqtt.connect(mqttUrl, options);
 
     this.client.on("connect", () => {
-      console.log(`[MQTT] Connected to broker as ${clientId}`);
+      Logger.log(`[MQTT] Connected to broker as ${clientId}`);
     });
 
     this.client.on("error", (err) => {
-      console.error(`[MQTT] Error connecting: ${err.message}`);
+      Logger.error(`[MQTT] Error connecting: ${err.message}`);
     });
 
     this.client.on("reconnect", () => {
-      console.log("[MQTT] Reconnecting...");
+      Logger.log("[MQTT] Reconnecting...");
     });
 
     this.client.on("close", () => {
-      console.log("[MQTT] Connection closed");
+      Logger.log("[MQTT] Connection closed");
     });
   }
 

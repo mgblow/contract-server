@@ -10,8 +10,8 @@ export class Tex extends Document {
   @Prop({ type: String, ref: "Person", index: true })
   userId: string;
 
-  @Prop({ type: String, ref: "Topic", index: true })
-  topicId: string;
+  @Prop({ type: String, index: true })
+  topic: string;
 
   @Prop({ required: true })
   text: string;
@@ -32,17 +32,10 @@ export class Tex extends Document {
     coordinates: [number, number];
   };
 
-  // 🔹 Whether this tex should be visible globally on the public globe
-  @Prop({ type: Boolean, default: true, index: true })
-  isPublic: boolean;
 
   // 🔹 Gift system
   @Prop({ type: String, default: null, index: true })
-  giftId?: string | null; // catalog gift id (heart, comet, neon gem, etc.)
-
-  // how many gems were spent on this tex (for highlighting / economy)
-  @Prop({ type: Number, default: 0 })
-  gemValue?: number;
+  gemId?: string | null; // catalog gift id (heart, comet, neon gem, etc.)
 
   @Prop()
   createdAt: Date;

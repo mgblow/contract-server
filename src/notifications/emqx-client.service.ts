@@ -6,6 +6,7 @@ export interface EmqxClientInfo {
   username?: string;
   connected_at?: string;
   disconnected_at?: string;
+  ip_address?: string;
   is_online?: boolean;
 }
 
@@ -16,8 +17,7 @@ export class EmqxClientService {
   private readonly baseUrl: string;
 
   constructor() {
-    this.baseUrl =
-      process.env.EMQX_APP_URL || "http://localhost:18083/api/v5";
+    this.baseUrl = process.env.EMQX_APP_URL || "http://localhost:18083/api/v5";
 
     this.http = axios.create({
       baseURL: this.baseUrl,
@@ -29,11 +29,9 @@ export class EmqxClientService {
     });
   }
 
-  // ───────────────────── Publish ─────────────────────
-
-  /**
-   * Publish a message via EMQX HTTP API.
-   */
+  // ───────────────────────────────────────────────
+  // MQTT PUBLISH (via EMQX HTTP API)
+  // ───────────────────────────────────────────────
   async publish(
     topic: string,
     payload: any,
@@ -45,25 +43,26 @@ export class EmqxClientService {
         topic,
         qos,
         retain,
-        payload: typeof payload === "string"
-          ? payload
-          : JSON.stringify(payload),
+        payload:
+          typeof payload === "string" ? payload : JSON.stringify(payload),
       });
-      this.logger.debug(`Published to topic="${topic}" via EMQX HTTP`);
-    } catch (error: any) {
+
+      this.logger.debug(`EMQX Publish OK → topic=${topic}`);
+    } catch (error) {
       this.logger.error(
-        `Failed to publish to topic="${topic}"`,
-        error?.response?.data || error,
+        `EMQX Publish FAILED → topic=${topic}`,
+        error.response?.data || error,
       );
       throw error;
     }
   }
 
-  // ───────────────────── Client status ─────────────────────
+  // ───────────────────────────────────────────────
+  // CLIENT LISTING / QUERY
+  // ───────────────────────────────────────────────
 
   /**
-   * Get all clients from EMQX (paginated).
-   * Use filters where possible instead of fetching all in prod.
+   * Generic EMQX clients list.
    */
   async listClients(params?: {
     currpage?: number;
@@ -73,47 +72,122 @@ export class EmqxClientService {
     try {
       const query: any = {
         currpage: params?.currpage ?? 1,
-        pagesize: params?.pagesize ?? 100,
+        pagesize: params?.pagesize ?? 200,
       };
 
       if (params?.clientIdLike) {
-        // EMQX v5 supports simple 'like' filter on clientid
         query.clientid = params.clientIdLike;
       }
 
       const res = await this.http.get("/clients", { params: query });
 
-      // in v5: { code, data: { meta, list: [...] } }
-      const list: EmqxClientInfo[] = res.data?.data?.list ?? res.data?.data ?? [];
+      const list: EmqxClientInfo[] =
+        res.data?.data?.list ?? res.data?.data ?? [];
+
       return list;
-    } catch (error: any) {
+    } catch (error) {
       this.logger.error(
         "Failed to list EMQX clients",
-        error?.response?.data || error,
+        error.response?.data || error,
       );
       throw error;
     }
   }
 
   /**
-   * Find clients for a given userId based on your clientId convention.
-   * Example convention: "lynku:<userId>:<platformOrRandom>"
+   * Find all sessions belonging to a user.
+   * Convention: "lynku:<userId>:<random>"
    */
   async findClientsByUserId(userId: string): Promise<EmqxClientInfo[]> {
-    // tweak to your convention; here we do a simple 'like' search
-    const like = `lynku:${userId}`; // or `${userId}` if you use raw id
-    return this.listClients({ clientIdLike: like });
+    const prefix = `lynku:${userId}`;
+    return this.listClients({ clientIdLike: prefix });
   }
 
   /**
-   * Returns true if we see any online clients for the user.
+   * Check if user has any active MQTT sessions.
    */
   async isUserOnline(userId: string): Promise<{
     isOnline: boolean;
     sessions: EmqxClientInfo[];
   }> {
     const sessions = await this.findClientsByUserId(userId);
-    const isOnline = sessions && sessions.length > 0;
+    const isOnline = sessions.length > 0;
+
     return { isOnline, sessions };
+  }
+
+  // ───────────────────────────────────────────────
+  // PRESENCE MANAGEMENT
+  // ───────────────────────────────────────────────
+
+  /**
+   * Saves presence info in EMQX or other persistence layer.
+   */
+  async saveUserPresence(clientId: string, online: boolean): Promise<void> {
+    try {
+      const userId = this.extractUserId(clientId);
+
+      await this.http.put(`/extensions/presence/${userId}`, {
+        online,
+        lastSeen: Date.now(),
+      });
+
+      this.logger.log(`Presence updated: user=${userId} online=${online}`);
+    } catch (error) {
+      this.logger.error("Failed to save presence", error.response?.data || error);
+    }
+  }
+
+  // ───────────────────────────────────────────────
+  // SUBSCRIPTION INSPECTION
+  // ───────────────────────────────────────────────
+
+  async getSubscriptions(clientId: string): Promise<string[]> {
+    try {
+      const res = await this.http.get(`/subscriptions/${clientId}`);
+      return res.data?.data?.map((s) => s.topic) ?? [];
+    } catch (error) {
+      this.logger.error(
+        `Failed to fetch subscriptions for ${clientId}`,
+        error.response?.data || error,
+      );
+      return [];
+    }
+  }
+
+  // ───────────────────────────────────────────────
+  // ADMIN OPERATIONS (moderation / kick user)
+  // ───────────────────────────────────────────────
+
+  async kickUser(clientId: string): Promise<void> {
+    try {
+      await this.http.delete(`/clients/${clientId}`);
+      this.logger.warn(`Kicked EMQX client=${clientId}`);
+    } catch (error) {
+      this.logger.error(
+        `Failed to kick client=${clientId}`,
+        error.response?.data || error,
+      );
+    }
+  }
+
+  // ───────────────────────────────────────────────
+  // UTILITIES
+  // ───────────────────────────────────────────────
+
+  /**
+   * Extract userId from clientId.
+   * Example formats supported:
+   *   lynku:123:ios
+   *   lynku:987:web
+   */
+  extractUserId(clientId: string): string {
+    try {
+      const parts = clientId.split(":");
+      if (parts[0] === "lynku") return parts[1];
+      return clientId;
+    } catch {
+      return clientId;
+    }
   }
 }

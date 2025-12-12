@@ -3,7 +3,7 @@ export class SearchTexesPayload {
   query: string;
   limit: number;
   page: number;
-  topicId?: string;
+  topic?: string;
   userId?: string;
   giftId?: string;
 }

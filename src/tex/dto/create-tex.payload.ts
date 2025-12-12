@@ -4,7 +4,7 @@ export class CreateTexPayload {
   // will be filled from token.userFields.id in service
   userId?: string;
 
-  topicId?: string;
+  topic?: string;
 
   text: string;
 
@@ -23,6 +23,6 @@ export class CreateTexPayload {
   isPublic?: boolean;
 
   // Gift / gems info
-  giftId?: string;
+  gemId?: string;
   gemValue?: number;
 }

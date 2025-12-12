@@ -1,20 +1,10 @@
-import { Module } from "@nestjs/common";
-import { AuthModule } from "./auth/auth.module";
-import { ProxyModule } from "./proxy/proxy.module";
+import { Module } from '@nestjs/common';
+import { AuthModule } from './auth/auth.module';
+import { ProxyModule } from './proxy/proxy.module';
 import { FileModule } from './files/file.module';
-import { LynksModule } from './lynks/lynks.module';
-import { GemsModule } from './gems/gems.module';
-import { NotificationsModule } from './notifications/notifications.module';
+import { EmqxWebhookModule } from './emqx-webhook/emqx-webhook.module';
 
 @Module({
-  imports: [
-    AuthModule,
-    ProxyModule,
-    FileModule,
-    LynksModule,
-    GemsModule,
-    NotificationsModule,
-  ]
+  imports: [AuthModule, ProxyModule, FileModule, EmqxWebhookModule],
 })
-export class HttpModule {
-}
+export class HttpModule {}

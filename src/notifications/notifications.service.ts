@@ -21,24 +21,6 @@ export class NotificationsService {
     return `${channel}/events`;
   }
 
-  private lynkTopic(lynkId: string, userId: string): string {
-    // private 2-way topic per lynk & user
-    // each side subscribes to lynk/{lynkId}/{userId}
-    return `lynk/${lynkId}/${userId}`;
-  }
-
-  // ───────────────────── Presence ─────────────────────
-
-  async getUserStatus(payload: GetUserStatusPayload) {
-    const userId = payload.userId || payload.token.userFields.id;
-    const { isOnline, sessions } = await this.emqx.isUserOnline(userId);
-
-    return {
-      userId,
-      isOnline,
-      sessions,
-    };
-  }
 
   // ───────────────────── Push helpers ─────────────────────
 
@@ -73,19 +55,90 @@ export class NotificationsService {
     await this.emqx.publish(topic, msg, payload.qos ?? 0, false);
   }
 
-  /**
-   * 2-way private lynk event.
-   *
-   * You have two choices:
-   *  - A) Use user topics (user/{id}/events) with event.type "LYNK_*"
-   *  - B) Use dedicated lynk/{lynkId}/{userId} topics.
-   *
-   * Below I'll do A) (simpler) but keep topic helpers if you want B) later.
-   */
+
+  async handleClientConnected(data: any) {
+    this.logger.log(`User connected: ${data.clientId}`);
+
+    // You can mark the user online or update DB
+    await this.emqx.saveUserPresence(data.clientId, true);
+
+    // Optional: notify user devices
+    await this.emqx.publish(
+      this.userEventsTopic(data.userId),
+      { event: "USER_ONLINE", userId: data.userId, ts: Date.now() },
+      0,
+      false
+    );
+  }
+
+  async handleClientDisconnected(data: any) {
+    this.logger.log(
+      `User disconnected: ${data.clientId} reason=${data.reason}`
+    );
+
+    await this.emqx.saveUserPresence(data.clientId, false);
+
+    await this.emqx.publish(
+      this.userEventsTopic(data.userId),
+      { event: "USER_OFFLINE", userId: data.userId, ts: Date.now() },
+      0,
+      false
+    );
+  }
+
+  // ─────────────────────────── TEX message handling ───────────────────────────
+
+  async handleMessagePublished(data: any) {
+    this.logger.log(`Message published => topic=${data.topic}`);
+
+    const msg = {
+      event: "TEX_RECEIVED",
+      topic: data.topic,
+      payload: data.payload,
+      clientId: data.clientId,
+      ts: Date.now(),
+    };
+
+    // Forward published message to appropriate frontend subscriber
+    await this.emqx.publish(data.topic, msg, 0, false);
+
+    // Optionally: store in DB if public or private TEX
+    // You can parse topic for:
+    // - lynku/public
+    // - lynku/person/{id}
+    // - lynku/person/{id}/private/{fromUserId}
+  }
+
+  // ─────────────────────────── Subscription events ───────────────────────────
+
+  async handleSubscription(data: any) {
+    this.logger.debug(`Subscription event: ${data.clientId} -> ${data.topic}`);
+
+    await this.emqx.publish(
+      this.userEventsTopic(data.userId),
+      {
+        event: "SUBSCRIBED",
+        topic: data.topic,
+        ts: Date.now(),
+      },
+      0,
+      false
+    );
+  }
+
+  // ─────────────────────────── Existing Service API ───────────────────────────
+
+  async getUserStatus(payload: GetUserStatusPayload) {
+    const userId = payload.userId || payload.token.userFields.id;
+    const { isOnline, sessions } = await this.emqx.isUserOnline(userId);
+
+    return { userId, isOnline, sessions };
+  }
+
+
   async sendLynkEvent(payload: SendLynkEventPayload): Promise<void> {
     const { lynkId, fromUserId, toUserId, event, data } = payload;
-
-    const eventPayload = {
+    const send = {
       lynkId,
       fromUserId,
       toUserId,
@@ -94,21 +147,12 @@ export class NotificationsService {
       ts: Date.now(),
     };
 
-    // 1) send to sender (so multiple devices see the same)
-    const fromTopic = this.userEventsTopic(fromUserId);
-    await this.emqx.publish(fromTopic, eventPayload, payload.qos ?? 0, false);
-
-    // 2) send to receiver
+    await this.emqx.publish(this.userEventsTopic(fromUserId), send, 0, false);
     if (toUserId && toUserId !== fromUserId) {
-      const toTopic = this.userEventsTopic(toUserId);
-      await this.emqx.publish(toTopic, eventPayload, payload.qos ?? 0, false);
+      await this.emqx.publish(this.userEventsTopic(toUserId), send, 0, false);
     }
   }
 
-  /**
-   * Broadcast: send event to a global topic (for global announcements, maintenance, etc.)
-   * Clients subscribe optionally to "broadcast/events".
-   */
   async broadcast(payload: BroadcastPayload): Promise<void> {
     const topic = "broadcast/events";
     const msg = {

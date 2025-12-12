@@ -4,7 +4,7 @@ import { MeiliSearch, Index } from "meilisearch";
 export interface TexSearchDocument {
   id: string;          // Meili primary key
   userId: string;
-  topicId: string;
+  topic: string;
   text: string;
 
   _geo: {              // for geo search
@@ -12,18 +12,14 @@ export interface TexSearchDocument {
     lng: number;
   };
 
-  isPublic: boolean;
-  giftId?: string | null;
-  gemValue?: number;
-
+  gemId?: string | null;
   createdAt?: number;  // timestamp (ms)
 }
 
 export interface TexSearchFilters {
   userId?: string;
-  topicId?: string;
-  giftId?: string;
-  isPublic?: boolean;
+  topic?: string;
+  gemId?: string;
   geoRadius?: { lat: number; lng: number; radius: number };
 }
 
@@ -124,15 +120,13 @@ export class MeiliSearchService implements OnModuleInit {
     return {
       id: tex._id?.toString() ?? tex.id?.toString(),
       userId: tex.userId?.toString() ?? "",
-      topicId: tex.topicId?.toString() ?? "",
+      topic: tex.topic?.toString() ?? "",
       text: tex.text ?? "",
       _geo: {
         lat: tex.location?.coordinates?.[1] ?? 0,
         lng: tex.location?.coordinates?.[0] ?? 0,
       },
-      isPublic: tex.isPublic ?? true,
-      giftId: tex.giftId ?? null,
-      gemValue: tex.gemValue ?? 0,
+      gemId: tex.gemId ?? null,
       createdAt: tex.createdAt
         ? new Date(tex.createdAt).getTime()
         : Date.now(),
@@ -144,17 +138,14 @@ export class MeiliSearchService implements OnModuleInit {
 
     const filterStrings: string[] = [];
 
-    if (filters.topicId) {
-      filterStrings.push(`topicId = "${filters.topicId}"`);
+    if (filters.topic) {
+      filterStrings.push(`topicId = "${filters.topic}"`);
     }
     if (filters.userId) {
       filterStrings.push(`userId = "${filters.userId}"`);
     }
-    if (filters.giftId) {
-      filterStrings.push(`giftId = "${filters.giftId}"`);
-    }
-    if (filters.isPublic !== undefined) {
-      filterStrings.push(`isPublic = ${filters.isPublic ? "true" : "false"}`);
+    if (filters.gemId) {
+      filterStrings.push(`giftId = "${filters.gemId}"`);
     }
     if (filters.geoRadius) {
       const { lat, lng, radius } = filters.geoRadius;
@@ -278,7 +269,7 @@ export class MeiliSearchService implements OnModuleInit {
   ) {
     return this.search({
       query,
-      filters: { topicId },
+      filters: { topic: topicId },
       limit,
       offset,
     });
@@ -306,7 +297,7 @@ export class MeiliSearchService implements OnModuleInit {
   ) {
     return this.search({
       query,
-      filters: { giftId },
+      filters: { gemId: giftId },
       limit,
       offset,
     });

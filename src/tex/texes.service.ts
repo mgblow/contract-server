@@ -110,7 +110,7 @@ export class TexesService implements OnModuleInit {
     const rawGemValue = payload.gemValue ?? 0;
 
     // If no gift & no gems → nothing to charge
-    if (!payload.giftId && rawGemValue <= 0) {
+    if (!payload.gemId && rawGemValue <= 0) {
       return 0;
     }
 
@@ -125,10 +125,10 @@ export class TexesService implements OnModuleInit {
       await this.requestService.send("spendGems", {
         token,
         amount: amountToCharge,
-        reason: payload.giftId ? "TEX_GIFT" : "TEX",
+        reason: payload.gemId ? "TEX_GIFT" : "TEX",
         metadata: {
-          giftId: payload.giftId ?? null,
-          topicId: payload.topicId ?? null,
+          giftId: payload.gemId ?? null,
+          topicId: payload.topic ?? null,
         },
       });
 
@@ -149,16 +149,16 @@ export class TexesService implements OnModuleInit {
 
     try {
       // 1) Validate topic if provided
-      if (createTexPayload.topicId) {
-        const findTopicRaw = await this.requestService.send("findTopic", {
+      if (createTexPayload.topic) {
+        const validateTopicRaw = await this.requestService.send("validateTopic", {
           token: createTexPayload.token,
-          _id: createTexPayload.topicId,
+          _id: createTexPayload.topic,
         });
 
-        const findTopic = JSON.parse(findTopicRaw);
-        if (!findTopic.data?.success) {
+        const validateTopic = JSON.parse(validateTopicRaw);
+        if (!validateTopic.data?.success) {
           await this.responseService.sendError(channel + "/createTex", {
-            message: "Topic not found",
+            message: "you are authorized to publish to this topic",
           });
           return;
         }
@@ -168,41 +168,24 @@ export class TexesService implements OnModuleInit {
       createTexPayload.userId = createTexPayload.token.userFields.id;
 
       // 3) Default topic if none specified (public globe/custom)
-      if (!createTexPayload.topicId && createTexPayload.location) {
-        createTexPayload.topicId = "/public/globe";
-      } else if (!createTexPayload.topicId) {
-        createTexPayload.topicId = "/public";
+      if (!createTexPayload.topic && createTexPayload.location) {
+        createTexPayload.topic = "/public/globe";
+      } else if (!createTexPayload.topic) {
+        createTexPayload.topic = "/public";
       }
 
-      // 4) Default visibility (public)
-      const isPublic =
-        createTexPayload.isPublic !== undefined
-          ? createTexPayload.isPublic
-          : true;
 
       // 5) Normalize location
       const location = this.normalizeLocation(createTexPayload.location);
 
-      // 6) Charge gems via Gems service if needed (gift or gemValue)
-      let chargedGemAmount = 0;
-      try {
-        chargedGemAmount = await this.chargeGemsForTex(createTexPayload);
-      } catch (err) {
-        await this.responseService.sendError(channel + "/createTex", {
-          message: "Not enough gems or wallet error",
-        });
-        return;
-      }
 
       // 7) Create and save Tex
       const createdTex = new this.texModel({
         userId: createTexPayload.userId,
-        topicId: createTexPayload.topicId,
+        topic: createTexPayload.topic,
         text: createTexPayload.text,
         location,
-        isPublic,
-        giftId: createTexPayload.giftId ?? null,
-        gemValue: chargedGemAmount, // actual charged gems
+        gemId: createTexPayload.gemId ?? null,
       });
 
       const tex = await createdTex.save();
@@ -224,61 +207,6 @@ export class TexesService implements OnModuleInit {
     }
   }
 
-  async update(updateTexPayload: UpdateTexPayload): Promise<void> {
-    const channel = updateTexPayload.token.userFields.channel;
-
-    try {
-      const existingTex = await this.texModel
-        .findById(updateTexPayload._id)
-        .exec();
-
-      if (!existingTex) {
-        await this.responseService.sendError(channel + "/updateTex", {
-          "tex._id": "tex _id does not exist",
-        });
-        return;
-      }
-
-      // Update fields (NO gem / gift changes here to avoid abuse)
-      if (updateTexPayload.text !== undefined) {
-        existingTex.text = updateTexPayload.text;
-      }
-      if (updateTexPayload.topicId !== undefined) {
-        existingTex.topicId = updateTexPayload.topicId;
-      }
-      if (updateTexPayload.location !== undefined) {
-        existingTex.location = this.normalizeLocation(
-          updateTexPayload.location,
-        );
-      }
-      if (updateTexPayload.isPublic !== undefined) {
-        existingTex.isPublic = updateTexPayload.isPublic;
-      }
-
-      // intentionally ignoring updateTexPayload.giftId & gemValue
-      // if you ever want to allow that, you must also call chargeGemsForTex again.
-
-      const updatedTex = await existingTex.save();
-
-      // Update in MeiliSearch
-      try {
-        await this.meilisearchService.updateDocument(updatedTex);
-        this.logger.debug(`Updated tex ${updatedTex._id} in MeiliSearch`);
-      } catch (error) {
-        this.logger.error(
-          `Failed to update tex ${updatedTex._id} in MeiliSearch`,
-          error,
-        );
-      }
-
-      await this.responseService.sendSuccess(channel + "/updateTex", updatedTex);
-    } catch (error) {
-      this.logger.error("updateTex failed", error);
-      await this.responseService.sendError(channel + "/updateTex", {
-        message: "Failed to update tex",
-      });
-    }
-  }
 
   /**
    * Search using MeiliSearch (fast, typo-tolerant, relevance-based)
@@ -292,8 +220,8 @@ export class TexesService implements OnModuleInit {
 
       // Build filters for Meili
       const filters: any = {};
-      if (searchTexesPayload.topicId) {
-        filters.topicId = searchTexesPayload.topicId;
+      if (searchTexesPayload.topic) {
+        filters.topicId = searchTexesPayload.topic;
       }
       if (searchTexesPayload.userId) {
         filters.userId = searchTexesPayload.userId;
@@ -340,8 +268,8 @@ export class TexesService implements OnModuleInit {
       $or: [{ text: regex }],
     };
 
-    if (searchTexesPayload.topicId) {
-      query.topicId = searchTexesPayload.topicId;
+    if (searchTexesPayload.topic) {
+      query.topicId = searchTexesPayload.topic;
     }
     if (searchTexesPayload.userId) {
       query.userId = searchTexesPayload.userId;
@@ -388,7 +316,7 @@ export class TexesService implements OnModuleInit {
         lng,
         radius,
         query,
-        topicId ? { topicId } : undefined,
+        topicId ? { topic: topicId } : undefined,
       );
 
       await this.responseService.sendSuccess(channel + "/searchNearby", {

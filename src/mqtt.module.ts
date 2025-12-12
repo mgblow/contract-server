@@ -3,6 +3,9 @@ import { TopicsModule } from "./topics/topics.module";
 import { TexesModule } from "./tex/texes.module";
 import { PeopleModule } from "./people/people.module";
 import { PicksModule } from "./picks/picks.module";
+import { LynksModule } from './lynks/lynks.module';
+import { GemsModule } from './gems/gems.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 
 @Module({
@@ -10,7 +13,10 @@ import { PicksModule } from "./picks/picks.module";
     TopicsModule,
     TexesModule,
     PeopleModule,
-    PicksModule
+    PicksModule,
+    LynksModule,
+    GemsModule,
+    NotificationsModule,
   ]
 })
 export class MqttModule {
