@@ -169,9 +169,7 @@ export class TexesService implements OnModuleInit {
 
       // 3) Default topic if none specified (public globe/custom)
       if (!createTexPayload.topic && createTexPayload.location) {
-        createTexPayload.topic = "/public/globe";
-      } else if (!createTexPayload.topic) {
-        createTexPayload.topic = "/public";
+        createTexPayload.topic = "/globe";
       }
 
 

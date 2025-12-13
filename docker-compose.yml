@@ -11,7 +11,7 @@ services:
       - shared_network
     volumes:
       - mongo_data:/data/db
-      - mongo_config:/data/configdb   # ensures full persistence
+      - mongo_config:/data/configdb
 
   emqx:
     image: emqx:latest
@@ -25,9 +25,9 @@ services:
     networks:
       - shared_network
     volumes:
-      - emqx_data:/opt/emqx/data       # message data, retained messages
-      - emqx_log:/opt/emqx/log         # logs
-      - emqx_etc:/opt/emqx/etc         # <--- PERSIST CONFIGS HERE
+      - emqx_data:/opt/emqx/data
+      - emqx_log:/opt/emqx/log
+      - emqx_etc:/opt/emqx/etc
 
   redis:
     image: redis/redis-stack:latest
@@ -43,19 +43,34 @@ services:
   meilisearch:
     image: getmeili/meilisearch:latest
     container_name: meilisearch
-    environment:
-      - MEILI_ENV=production
-      - MEILI_NO_ANALYTICS=true
-      - MEILI_MASTER_KEY=supersecuremasterkey123
-      - MEILI_DB_PATH=/meili_data
-      - MEILI_HTTP_ADDR=0.0.0.0:7700
     restart: unless-stopped
+    environment:
+      MEILI_ENV: production
+      MEILI_NO_ANALYTICS: "true"
+      MEILI_MASTER_KEY: supersecuremasterkey123
+      MEILI_DB_PATH: /meili_data
+      MEILI_HTTP_ADDR: 0.0.0.0:7700
     ports:
       - "7700:7700"
     networks:
       - shared_network
     volumes:
       - meili_data:/meili_data
+
+  # 🔹 External Meilisearch UI
+  meilisearch-ui:
+    image: riccoxie/meilisearch-ui:latest
+    container_name: meilisearch-ui
+    restart: on-failure:5
+    ports:
+      - "24900:24900"
+    environment:
+      MEILI_HTTP_ADDR: http://meilisearch:7700
+      MEILI_MASTER_KEY: supersecuremasterkey123
+    depends_on:
+      - meilisearch
+    networks:
+      - shared_network
 
 networks:
   shared_network:

@@ -80,24 +80,7 @@ export class PeopleService {
 
   // --- Index person to MeiliSearch ---
   private async indexPerson(person: Person) {
-    await this.meiliService.addOrUpdatePerson({
-      id: person._id.toString(),
-      username: person.username,
-      gender: person.gender,
-      age: person.age,
-      location: person.location,
-      hobbies: person.hobbies.map(h => h.toString()),
-      businessTypes: person.business,
-      avatarStyle: person.avatarConfig?.style,
-      topType: person.avatarConfig?.topType,
-      accessories: person.avatarConfig?.accessories,
-      hairColor: person.avatarConfig?.hairColor,
-      eyeType: person.avatarConfig?.eyeType,
-      skinColor: person.avatarConfig?.skinColor,
-      createdAt: person.createdAt,
-      updatedAt: person.updatedAt,
-      popularityScore: person.popularityScore || 0,
-    });
+    await this.meiliService.addOrUpdatePerson(person);
   }
 
   // --- Search People ---
