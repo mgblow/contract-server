@@ -32,11 +32,6 @@ export class Tex extends Document {
     coordinates: [number, number];
   };
 
-
-  // 🔹 Gift system
-  @Prop({ type: String, default: null, index: true })
-  gemId?: string | null; // catalog gift id (heart, comet, neon gem, etc.)
-
   @Prop()
   createdAt: Date;
 
@@ -50,4 +45,3 @@ export const TexSchema = SchemaFactory.createForClass(Tex);
 TexSchema.index({ location: "2dsphere" });
 TexSchema.index({ userId: 1, createdAt: -1 });
 TexSchema.index({ topicId: 1, createdAt: -1 });
-TexSchema.index({ giftId: 1, createdAt: -1 });

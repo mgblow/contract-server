@@ -99,47 +99,6 @@ export class TexesService implements OnModuleInit {
     return undefined;
   }
 
-  /**
-   * Charge the user's gem wallet for a tex (gift / boost) using Gems service.
-   * Returns the final amount charged (0 if no charge).
-   * Throws if gem charge fails (not enough balance, etc).
-   */
-  private async chargeGemsForTex(
-    payload: CreateTexPayload,
-  ): Promise<number> {
-    const rawGemValue = payload.gemValue ?? 0;
-
-    // If no gift & no gems → nothing to charge
-    if (!payload.gemId && rawGemValue <= 0) {
-      return 0;
-    }
-
-    const amountToCharge = Math.max(0, rawGemValue);
-    if (amountToCharge <= 0) {
-      return 0;
-    }
-
-    const token = payload.token;
-
-    try {
-      await this.requestService.send("spendGems", {
-        token,
-        amount: amountToCharge,
-        reason: payload.gemId ? "TEX_GIFT" : "TEX",
-        metadata: {
-          giftId: payload.gemId ?? null,
-          topicId: payload.topic ?? null,
-        },
-      });
-
-      // If RequestService.send throws on error, reaching here means success.
-      // We return the amount we tried to charge.
-      return amountToCharge;
-    } catch (error) {
-      this.logger.error("spendGems failed in chargeGemsForTex", error);
-      throw error;
-    }
-  }
 
   /**
    * Create a new Tex (public globe or topic), with optional gift & gems.
@@ -150,18 +109,18 @@ export class TexesService implements OnModuleInit {
     try {
       // 1) Validate topic if provided
       if (createTexPayload.topic) {
-        const validateTopicRaw = await this.requestService.send("validateTopic", {
-          token: createTexPayload.token,
-          _id: createTexPayload.topic,
-        });
-
-        const validateTopic = JSON.parse(validateTopicRaw);
-        if (!validateTopic.data?.success) {
-          await this.responseService.sendError(channel + "/createTex", {
-            message: "you are authorized to publish to this topic",
-          });
-          return;
-        }
+        // const validateTopicRaw = await this.requestService.send("validateTopic", {
+        //   token: createTexPayload.token,
+        //   _id: createTexPayload.topic,
+        // });
+        //
+        // const validateTopic = JSON.parse(validateTopicRaw);
+        // if (!validateTopic.data?.success) {
+        //   await this.responseService.sendError(channel + "/createTex", {
+        //     message: "you are authorized to publish to this topic",
+        //   });
+        //   return;
+        // }
       }
 
       // 2) Normalize userId from token
@@ -182,8 +141,7 @@ export class TexesService implements OnModuleInit {
         userId: createTexPayload.userId,
         topic: createTexPayload.topic,
         text: createTexPayload.text,
-        location,
-        gemId: createTexPayload.gemId ?? null,
+        location
       });
 
       const tex = await createdTex.save();

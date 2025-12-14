@@ -18,11 +18,4 @@ export class CreateTexPayload {
     type: "Point";
     coordinates: [number, number];
   } | [number, number] | string;
-
-  // TEX visibility
-  isPublic?: boolean;
-
-  // Gift / gems info
-  gemId?: string;
-  gemValue?: number;
 }
